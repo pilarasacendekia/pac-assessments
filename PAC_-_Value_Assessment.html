@@ -1,0 +1,808 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Values Discovery — Pilar Asa Cendekia</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  :root{
+    --bg:#f6f7fb; --card:#ffffff; --line:#e5e7eb; --ink:#1e293b; --muted:#64748b;
+    --accent:#4f46e5; --accent-ink:#ffffff;
+    --never:#cbd5e1; --rarely:#7dd3fc; --sometimes:#fbbf24; --often:#fb923c; --always:#4f46e5;
+    --gold:#b45309; --gold-bg:#fffbeb; --gold-line:#fde68a;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:28px 18px 80px;}
+  .brandbar{
+    display:flex; align-items:center; justify-content:center; gap:10px;
+    font-size:12px; letter-spacing:.12em; font-weight:700; color:var(--accent);
+    text-transform:uppercase; margin-bottom:6px;
+  }
+  h1{font-size:26px; text-align:center; margin:4px 0 6px;}
+  .lead{text-align:center; color:var(--muted); font-size:14.5px; margin:0 0 22px;}
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:22px 22px 20px; margin-bottom:18px; box-shadow:0 1px 3px rgba(15,23,42,.04);
+  }
+  .screen{display:none;}
+  .screen.active{display:block;}
+
+  /* Intro / How-to */
+  .howto-list{margin:0; padding-left:20px; color:var(--muted); font-size:14px;}
+  .howto-list li{margin-bottom:6px;}
+  .level-legend{display:flex; flex-direction:column; gap:8px; margin-top:14px;}
+  .level-row{display:flex; align-items:flex-start; gap:10px; font-size:13.5px;}
+  .level-dot{width:12px; height:12px; border-radius:50%; margin-top:4px; flex:none;}
+  .level-row b{display:block; font-size:13.5px;}
+  .level-row span{color:var(--muted);}
+
+  /* Identity form */
+  .identity-card h3{font-size:18px; margin:0 0 4px;}
+  .identity-card .sub{font-size:13px; color:var(--muted); margin:0 0 16px;}
+  .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .form-grid .full{grid-column:1/-1;}
+  label{display:block; font-size:12.5px; font-weight:600; color:var(--muted); margin-bottom:5px;}
+  input[type=text],input[type=email],input[type=number],input[type=date]{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:10px;
+    font-size:14.5px; font-family:inherit; background:#fbfbfe;
+  }
+  input:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  .field-err{font-size:12px; color:#dc2626; margin-top:4px; display:none;}
+
+  .btn{
+    display:inline-flex; align-items:center; justify-content:center; gap:8px;
+    background:var(--accent); color:var(--accent-ink); border:none; border-radius:12px;
+    padding:13px 22px; font-size:15px; font-weight:600; cursor:pointer; font-family:inherit;
+    transition:opacity .15s, transform .05s;
+  }
+  .btn:hover{opacity:.92;}
+  .btn:active{transform:scale(.98);}
+  .btn:disabled{opacity:.45; cursor:not-allowed;}
+  .btn.secondary{background:#fff; color:var(--ink); border:1px solid var(--line);}
+  .btn.ghost{background:transparent; color:var(--accent); padding:10px 4px;}
+  .btn.block{width:100%;}
+  .start-row{display:flex; justify-content:center; margin-top:22px;}
+  .btn-row{display:flex; gap:10px; justify-content:center; flex-wrap:wrap; margin-top:18px;}
+
+  /* Sorting screen */
+  .progress-wrap{margin-bottom:22px;}
+  .progress-top{display:flex; justify-content:space-between; font-size:12.5px; color:var(--muted); margin-bottom:6px;}
+  .progress-bar{height:7px; background:var(--line); border-radius:99px; overflow:hidden;}
+  .progress-fill{height:100%; background:var(--accent); border-radius:99px; transition:width .25s;}
+
+  .sort-card{
+    background:var(--card); border:1px solid var(--line); border-radius:20px;
+    padding:38px 26px; text-align:center; min-height:200px;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    box-shadow:0 4px 18px rgba(15,23,42,.06); margin-bottom:22px;
+  }
+  .sort-kategori{font-size:11.5px; letter-spacing:.1em; text-transform:uppercase; color:var(--accent); font-weight:700; margin-bottom:10px;}
+  .sort-value{font-size:30px; font-weight:800; margin:0 0 12px;}
+  .sort-ket{font-size:15px; color:var(--muted); max-width:420px;}
+
+  .level-btns{display:grid; grid-template-columns:1fr; gap:10px;}
+  .level-btn{
+    display:flex; align-items:center; gap:12px; padding:14px 16px; border-radius:14px;
+    border:1.5px solid var(--line); background:#fff; cursor:pointer; text-align:left;
+    font-family:inherit; font-size:14.5px; font-weight:600; color:var(--ink);
+    transition:border-color .15s, background .15s;
+  }
+  .level-btn:hover{border-color:var(--accent); background:#f8f8fe;}
+  .level-btn .level-dot{width:14px; height:14px; margin-top:0;}
+  .level-btn small{display:block; font-weight:400; color:var(--muted); font-size:12px; margin-top:2px;}
+  .sort-nav{display:flex; justify-content:space-between; margin-top:16px;}
+
+  /* Refine screen */
+  .refine-head{margin-bottom:16px;}
+  .refine-head h2{font-size:20px; margin:0 0 6px;}
+  .refine-head p{font-size:13.5px; color:var(--muted); margin:0;}
+  .pick-count{
+    display:inline-flex; align-items:center; gap:6px; font-size:12.5px; font-weight:700;
+    background:var(--gold-bg); color:var(--gold); border:1px solid var(--gold-line);
+    border-radius:99px; padding:5px 12px; margin-top:10px;
+  }
+  .pile-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;}
+  @media(max-width:520px){.pile-grid{grid-template-columns:1fr;}}
+  .pile-item{
+    position:relative; border:1.5px solid var(--line); border-radius:12px; padding:12px 14px 12px 40px;
+    background:#fff; cursor:pointer; font-size:14px; font-weight:600; transition:.15s;
+  }
+  .pile-item:hover{border-color:var(--accent);}
+  .pile-item.picked{border-color:var(--accent); background:#f5f4ff;}
+  .pile-item .rank-badge{
+    position:absolute; left:10px; top:50%; transform:translateY(-50%);
+    width:20px; height:20px; border-radius:50%; background:var(--line); color:#fff;
+    font-size:11.5px; font-weight:800; display:flex; align-items:center; justify-content:center;
+  }
+  .pile-item.picked .rank-badge{background:var(--accent);}
+  .pile-item .cat{display:block; font-weight:400; font-size:11.5px; color:var(--muted); margin-top:1px;}
+  .empty-note{font-size:13.5px; color:var(--muted); padding:14px; text-align:center; border:1px dashed var(--line); border-radius:12px;}
+
+  /* Results screen */
+  .id-summary{display:grid; grid-template-columns:1fr 1fr; gap:10px 18px; font-size:13.5px;}
+  .id-summary div b{display:block; font-size:11.5px; color:var(--muted); font-weight:600; text-transform:uppercase; letter-spacing:.04em;}
+  .section-title{font-size:17px; font-weight:800; margin:0 0 4px;}
+  .section-sub{font-size:13px; color:var(--muted); margin:0 0 14px;}
+  .value-chip-lg{
+    border:1.5px solid var(--gold-line); background:var(--gold-bg); border-radius:14px;
+    padding:16px 18px; margin-bottom:10px;
+  }
+  .value-chip-lg .rank{
+    display:inline-flex; width:24px; height:24px; border-radius:50%; background:var(--gold);
+    color:#fff; font-size:12.5px; font-weight:800; align-items:center; justify-content:center; margin-right:8px;
+  }
+  .value-chip-lg .vname{font-size:17px; font-weight:800; color:var(--ink);}
+  .value-chip-lg .vcat{font-size:11.5px; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; margin-left:4px;}
+  .value-chip-lg p{margin:6px 0 0; font-size:14px; color:#475569;}
+  .value-chip{
+    border:1.5px solid var(--line); background:#f8fafc; border-radius:12px;
+    padding:12px 16px; margin-bottom:8px; font-size:14.5px;
+  }
+  .value-chip .vname{font-weight:700;}
+  .value-chip .vcat{font-size:11px; color:var(--muted); text-transform:uppercase; margin-left:6px;}
+  .value-chip p{margin:4px 0 0; font-size:13px; color:var(--muted);}
+  .narrative{font-size:13.5px; color:#475569; background:#f8fafc; border-radius:12px; padding:14px 16px; margin-top:12px;}
+
+  details.breakdown{margin-top:6px;}
+  details.breakdown summary{cursor:pointer; font-weight:700; font-size:14px; padding:6px 0;}
+  .bd-level{margin:10px 0 16px;}
+  .bd-level-title{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:700; margin-bottom:6px;}
+  .bd-tags{display:flex; flex-wrap:wrap; gap:6px;}
+  .bd-tag{font-size:12px; background:#f1f5f9; border-radius:99px; padding:4px 10px; color:#334155;}
+
+  .disclaimer{font-size:12px; color:var(--muted); background:#f8fafc; border-radius:12px; padding:12px 14px; margin-top:6px;}
+
+  .email-panel input{margin-bottom:10px;}
+  .status-msg{font-size:13px; margin-top:10px; display:none;}
+  .status-msg.ok{color:#15803d;}
+  .status-msg.err{color:#dc2626;}
+  .status-msg.pending{color:var(--muted);}
+
+  footer{text-align:center; font-size:11.5px; color:#94a3b8; margin-top:28px;}
+</style>
+</head>
+<body>
+<a href="index.html" id="pac-home-btn" style="position:fixed;top:14px;left:14px;z-index:99999;display:inline-flex;align-items:center;gap:6px;background:#211C16;color:#fff;font-family:Arial,Helvetica,sans-serif;font-size:13px;font-weight:600;padding:8px 14px;border-radius:999px;text-decoration:none;box-shadow:0 2px 10px rgba(0,0,0,.18);">&#8592; Beranda</a>
+<style>@media print{#pac-home-btn{display:none !important;}}</style>
+
+<div class="wrap">
+
+  <!-- ============ SCREEN: INTRO ============ -->
+  <section id="screen-intro" class="screen active">
+    <div class="brandbar">Pilar Asa Cendekia</div>
+    <h1>Values Discovery</h1>
+    <p class="lead">Refleksi nilai-nilai hidup — mengenali apa yang benar-benar penting bagi Anda dalam karier &amp; kehidupan.</p>
+
+    <div class="card">
+      <h3 style="margin:0 0 10px; font-size:17px;">Cara Kerja Asesmen</h3>
+      <ol class="howto-list">
+        <li>Anda akan melihat <b>54 kartu nilai</b> satu per satu. Untuk tiap kartu, pilih seberapa penting nilai tersebut bagi Anda.</li>
+        <li>Setelah semua kartu tersortir, Anda akan memilih <b>3–5 nilai teratas</b> dari kelompok <i>Always Value</i> — ini menjadi <b>Core Values</b> Anda.</li>
+        <li>Lalu pilih <b>3–5 nilai teratas</b> dari kelompok <i>Often Value</i> — ini menjadi <b>Guiding Values</b> Anda.</li>
+      </ol>
+      <div class="level-legend">
+        <div class="level-row"><div class="level-dot" style="background:var(--never)"></div><div><b>Never Value</b><span>Tidak penting bagi Anda. Nilai ini jarang atau tidak pernah memengaruhi keputusan.</span></div></div>
+        <div class="level-row"><div class="level-dot" style="background:var(--rarely)"></div><div><b>Rarely Value</b><span>Kadang muncul, tapi bukan prioritas dalam hidup atau kerja Anda.</span></div></div>
+        <div class="level-row"><div class="level-dot" style="background:var(--sometimes)"></div><div><b>Sometimes Value</b><span>Cukup penting, namun belum selalu konsisten diwujudkan.</span></div></div>
+        <div class="level-row"><div class="level-dot" style="background:var(--often)"></div><div><b>Often Value</b><span>Nilai ini sering menjadi dasar dalam bertindak atau memutuskan sesuatu.</span></div></div>
+        <div class="level-row"><div class="level-dot" style="background:var(--always)"></div><div><b>Always Value</b><span>Sangat penting. Anda hidup dan mengambil keputusan berdasarkan nilai ini hampir setiap saat.</span></div></div>
+      </div>
+    </div>
+
+    <div class="card identity-card">
+      <h3>Data Diri</h3>
+      <p class="sub">Lengkapi data berikut sebelum memulai asesmen.</p>
+      <div class="form-grid">
+        <div class="full">
+          <label for="f-nama">Nama Lengkap *</label>
+          <input type="text" id="f-nama" placeholder="Nama lengkap Anda">
+          <div class="field-err" id="err-nama">Nama wajib diisi.</div>
+        </div>
+        <div>
+          <label for="f-instansi">Instansi *</label>
+          <input type="text" id="f-instansi" placeholder="Nama instansi / organisasi">
+          <div class="field-err" id="err-instansi">Instansi wajib diisi.</div>
+        </div>
+        <div>
+          <label for="f-usia">Usia *</label>
+          <input type="number" id="f-usia" min="10" max="100" placeholder="Usia">
+          <div class="field-err" id="err-usia">Usia wajib diisi.</div>
+        </div>
+        <div>
+          <label for="f-tanggal">Tanggal Pengisian *</label>
+          <input type="date" id="f-tanggal">
+          <div class="field-err" id="err-tanggal">Tanggal wajib diisi.</div>
+        </div>
+        <div>
+          <label for="f-email">Email *</label>
+          <input type="email" id="f-email" placeholder="nama@email.com">
+          <div class="field-err" id="err-email">Email valid wajib diisi.</div>
+        </div>
+      </div>
+      <div class="start-row">
+        <button class="btn" id="btnStart">Mulai Asesmen →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: SORT ============ -->
+  <section id="screen-sort" class="screen">
+    <div class="progress-wrap">
+      <div class="progress-top">
+        <span id="sortProgressLabel">Kartu 1 dari 54</span>
+        <span id="sortProgressPct">0%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" id="sortProgressFill" style="width:0%"></div></div>
+    </div>
+
+    <div class="sort-card">
+      <div class="sort-value" id="sortValue">Value</div>
+      <div class="sort-ket" id="sortKet">Keterangan</div>
+    </div>
+
+    <div class="level-btns" id="levelBtns"></div>
+
+    <div class="sort-nav">
+      <button class="btn ghost" id="btnBack">← Kembali</button>
+      <span></span>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: REFINE ALWAYS ============ -->
+  <section id="screen-refine-always" class="screen">
+    <div class="card">
+      <div class="refine-head">
+        <h2>Pilih Core Values Anda</h2>
+        <p>Dari kartu-kartu yang Anda tandai sebagai <b>Always Value</b>, klik untuk memilih <b>3–5 nilai teratas</b> — urutan klik menentukan peringkat. Nilai yang Anda pilih pertama akan menjadi prioritas utama.</p>
+        <span class="pick-count" id="alwaysPickCount">0 dipilih (min. 3, maks. 5)</span>
+      </div>
+      <div class="pile-grid" id="alwaysPile"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" id="btnBackToSort">← Kembali</button>
+      <button class="btn" id="btnAlwaysNext" disabled>Lanjut →</button>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: REFINE OFTEN ============ -->
+  <section id="screen-refine-often" class="screen">
+    <div class="card">
+      <div class="refine-head">
+        <h2>Pilih Guiding Values Anda</h2>
+        <p>Dari kartu-kartu yang Anda tandai sebagai <b>Often Value</b>, klik untuk memilih <b>3–5 nilai teratas</b> — urutan klik menentukan peringkat.</p>
+        <span class="pick-count" id="oftenPickCount">0 dipilih (min. 3, maks. 5)</span>
+      </div>
+      <div class="pile-grid" id="oftenPile"></div>
+    </div>
+    <div class="btn-row">
+      <button class="btn secondary" id="btnBackToAlways">← Kembali</button>
+      <button class="btn" id="btnOftenNext">Lihat Hasil →</button>
+    </div>
+  </section>
+
+  <!-- ============ SCREEN: RESULTS ============ -->
+  <section id="screen-results" class="screen">
+    <div class="brandbar">Pilar Asa Cendekia</div>
+    <h1>My Values</h1>
+    <p class="lead">Ringkasan refleksi nilai-nilai Anda</p>
+
+    <div class="card">
+      <div class="id-summary" id="resultIdentity"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">🥇 Core Values</div>
+      <p class="section-sub">Nilai-nilai fondasi hidup Anda — kompas utama dalam pengambilan keputusan.</p>
+      <div id="coreValuesList"></div>
+      <div class="narrative" id="coreNarrative"></div>
+    </div>
+
+    <div class="card">
+      <div class="section-title">🧭 Guiding Values</div>
+      <p class="section-sub">Nilai-nilai yang menjadi panduan dalam banyak keputusan Anda.</p>
+      <div id="guidingValuesList"></div>
+      <div class="narrative" id="guidingNarrative"></div>
+    </div>
+
+    <div class="card">
+      <details class="breakdown">
+        <summary>Lihat rincian seluruh 54 kartu berdasarkan level ▾</summary>
+        <div id="fullBreakdown"></div>
+      </details>
+    </div>
+
+    <div class="card">
+      <div class="disclaimer" id="disclaimerText"></div>
+    </div>
+
+    <div class="card email-panel">
+      <h3 style="margin:0 0 4px; font-size:16px;">Kirim Hasil ke Email</h3>
+      <p class="sub" style="font-size:13px; color:var(--muted); margin:0 0 12px;">Hasil akan dikirim sebagai PDF ke email yang Anda daftarkan di awal.</p>
+      <button class="btn block" id="btnShare">📩 Kirim Hasil ke Email Saya</button>
+      <div class="status-msg" id="shareStatus"></div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn secondary" id="btnDownloadPdf">⬇ Unduh PDF</button>
+      <button class="btn secondary" id="btnRestart">Ulangi Asesmen</button>
+    </div>
+
+    <footer>Values Discovery · Alat refleksi non-diagnostik · Pilar Asa Cendekia</footer>
+  </section>
+
+</div>
+
+<script>
+/* ================= DATA ================= */
+const VALUES = [{"no":1,"kategori":"Personal Integrity","value":"Integrity","ket":"Konsisten antara nilai, kata, dan tindakan."},{"no":2,"kategori":"Personal Integrity","value":"Honesty","ket":"Jujur terhadap diri sendiri dan orang lain."},{"no":3,"kategori":"Personal Integrity","value":"Authenticity","ket":"Menjadi diri sendiri tanpa topeng atau pura-pura."},{"no":4,"kategori":"Personal Integrity","value":"Responsibility","ket":"Bertanggung jawab atas keputusan dan hasil."},{"no":5,"kategori":"Personal Integrity","value":"Discipline","ket":"Tertib dan setia pada proses meski tidak diawasi."},{"no":6,"kategori":"Personal Integrity","value":"Simplicity","ket":"Menjalani hidup dan kerja dengan cara yang sederhana."},{"no":7,"kategori":"Personal Integrity","value":"Humility","ket":"Rendah hati untuk terus belajar dan menerima masukan."},{"no":8,"kategori":"Personal Integrity","value":"Self-Respect","ket":"Menghargai diri sendiri tanpa perlu pembuktian."},{"no":9,"kategori":"Personal Integrity","value":"Balance","ket":"Menjaga keseimbangan antara karier, keluarga, dan diri."},{"no":10,"kategori":"Growth & Learning","value":"Growth","ket":"Terus mengembangkan kapasitas dan karakter."},{"no":11,"kategori":"Growth & Learning","value":"Learning","ket":"Mau belajar dari pengalaman dan tantangan."},{"no":12,"kategori":"Growth & Learning","value":"Curiosity","ket":"Rasa ingin tahu tinggi terhadap hal baru."},{"no":13,"kategori":"Growth & Learning","value":"Excellence","ket":"Memberi hasil terbaik dari potensi diri."},{"no":14,"kategori":"Growth & Learning","value":"Challenge","ket":"Menyukai tantangan untuk keluar dari zona nyaman."},{"no":15,"kategori":"Growth & Learning","value":"Adaptability","ket":"Mampu menyesuaikan diri pada perubahan."},{"no":16,"kategori":"Growth & Learning","value":"Courage","ket":"Berani mencoba meski belum pasti."},{"no":17,"kategori":"Growth & Learning","value":"Resilience","ket":"Bangkit setelah gagal atau menghadapi tekanan."},{"no":18,"kategori":"Growth & Learning","value":"Reflection","ket":"Sering meninjau ulang arah dan makna hidup."},{"no":19,"kategori":"Purpose & Contribution","value":"Purpose","ket":"Memiliki arah dan alasan yang jelas dalam bekerja."},{"no":20,"kategori":"Purpose & Contribution","value":"Impact","ket":"Memberi pengaruh positif bagi orang lain."},{"no":21,"kategori":"Purpose & Contribution","value":"Service","ket":"Melayani dengan hati dan ketulusan."},{"no":22,"kategori":"Purpose & Contribution","value":"Empowerment","ket":"Membantu orang lain agar berdaya dan mandiri."},{"no":23,"kategori":"Purpose & Contribution","value":"Justice","ket":"Menegakkan keadilan dalam keputusan dan tindakan."},{"no":24,"kategori":"Purpose & Contribution","value":"Compassion","ket":"Peka terhadap kebutuhan dan perasaan orang lain."},{"no":25,"kategori":"Purpose & Contribution","value":"Generosity","ket":"Suka memberi waktu, tenaga, atau pengetahuan."},{"no":26,"kategori":"Purpose & Contribution","value":"Sustainability","ket":"Memikirkan dampak jangka panjang dari keputusan."},{"no":27,"kategori":"Purpose & Contribution","value":"Faith","ket":"Menghidupi keyakinan spiritual dalam keseharian kerja."},{"no":28,"kategori":"Relationship & Community","value":"Collaboration","ket":"Bekerja sama untuk mencapai tujuan bersama."},{"no":29,"kategori":"Relationship & Community","value":"Trust","ket":"Dapat dipercaya dan menepati komitmen."},{"no":30,"kategori":"Relationship & Community","value":"Respect","ket":"Menghargai pandangan dan perbedaan orang lain."},{"no":31,"kategori":"Relationship & Community","value":"Empathy","ket":"Mampu memahami perasaan orang lain."},{"no":32,"kategori":"Relationship & Community","value":"Team Spirit","ket":"Membangun semangat kebersamaan dalam tim."},{"no":33,"kategori":"Relationship & Community","value":"Mentorship","ket":"Membimbing dan berbagi pengalaman."},{"no":34,"kategori":"Relationship & Community","value":"Recognition","ket":"Menghargai usaha dan kontribusi orang lain."},{"no":35,"kategori":"Relationship & Community","value":"Belonging","ket":"Merasa menjadi bagian dari komunitas."},{"no":36,"kategori":"Relationship & Community","value":"Family","ket":"Menjaga hubungan dan waktu bersama keluarga."},{"no":37,"kategori":"Work Values","value":"Achievement","ket":"Mencapai hasil yang berarti dan terukur."},{"no":38,"kategori":"Work Values","value":"Autonomy","ket":"Memiliki kebebasan dalam cara bekerja."},{"no":39,"kategori":"Work Values","value":"Creativity","ket":"Dapat berinovasi dan berekspresi dalam pekerjaan."},{"no":40,"kategori":"Work Values","value":"Meaningful Work","ket":"Merasa pekerjaan membawa makna dan tujuan."},{"no":41,"kategori":"Work Values","value":"Stability","ket":"Mendambakan rasa aman dalam karier."},{"no":42,"kategori":"Work Values","value":"Recognition","ket":"Diakui atas kontribusi dan hasil kerja."},{"no":43,"kategori":"Work Values","value":"Leadership","ket":"Memimpin dan memberi arah bagi tim."},{"no":44,"kategori":"Work Values","value":"Growth Opportunity","ket":"Ada ruang untuk belajar dan berkembang."},{"no":45,"kategori":"Work Values","value":"Flexibility","ket":"Dapat menyesuaikan waktu dan cara kerja."},{"no":46,"kategori":"Life Orientation","value":"Contribution","ket":"Ingin memberi dampak positif di kehidupan orang lain."},{"no":47,"kategori":"Life Orientation","value":"Spirituality","ket":"Menyadari hidup lebih besar dari diri sendiri."},{"no":48,"kategori":"Life Orientation","value":"Freedom","ket":"Memiliki kebebasan menentukan arah hidup."},{"no":49,"kategori":"Life Orientation","value":"Peace","ket":"Menjalani hidup dengan tenang dan damai."},{"no":50,"kategori":"Life Orientation","value":"Gratitude","ket":"Menghargai proses dan mensyukuri hasil."},{"no":51,"kategori":"Life Orientation","value":"Joy","ket":"Menemukan sukacita dalam perjalanan hidup."},{"no":52,"kategori":"Life Orientation","value":"Health","ket":"Menjaga keseimbangan fisik, mental, dan spiritual."},{"no":53,"kategori":"Life Orientation","value":"Simplicity","ket":"Hidup tanpa berlebihan, fokus pada esensi."},{"no":54,"kategori":"Life Orientation","value":"Legacy","ket":"Ingin meninggalkan warisan nilai dan dampak positif."}];
+
+const LEVELS = [
+  {key:'never',     label:'Never Value',     desc:'Tidak penting bagi Anda.',                    color:'var(--never)'},
+  {key:'rarely',    label:'Rarely Value',    desc:'Kadang muncul, tapi bukan prioritas.',        color:'var(--rarely)'},
+  {key:'sometimes', label:'Sometimes Value', desc:'Cukup penting, belum selalu konsisten.',      color:'var(--sometimes)'},
+  {key:'often',     label:'Often Value',     desc:'Sering menjadi dasar bertindak/memutuskan.',  color:'var(--often)'},
+  {key:'always',    label:'Always Value',    desc:'Sangat penting, hampir selalu jadi dasar.',   color:'var(--always)'},
+];
+const LEVEL_MAP = Object.fromEntries(LEVELS.map(l=>[l.key,l]));
+
+const CORE_NARRATIVE = "Nilai-nilai ini adalah fondasi hidup Anda. Anda memegangnya teguh dalam hampir setiap keputusan dan tindakan, baik dalam pekerjaan maupun kehidupan pribadi. Ketika nilai-nilai ini terpenuhi, Anda merasa selaras, bermakna, dan penuh energi. Sebaliknya, ketika nilai-nilai ini diabaikan, Anda cenderung kehilangan arah dan motivasi. Dalam konteks karier, core values menjadi kompas utama — pekerjaan yang tidak sejalan dengan nilai-nilai ini biasanya akan terasa hampa, sekalipun memberi imbalan besar.";
+const GUIDING_NARRATIVE = "Nilai-nilai ini menjadi panduan dalam banyak keputusan, meski tidak selalu dominan di setiap situasi. Anda menghargainya dan berusaha mewujudkannya dalam keseharian. Dalam dunia kerja, nilai-nilai ini membantu Anda menentukan gaya kepemimpinan, cara berkolaborasi, atau memilih lingkungan kerja yang sesuai. Secara pribadi, guiding values mencerminkan apa yang Anda anggap penting dalam hubungan, pertumbuhan diri, dan keseimbangan hidup.";
+const DISCLAIMER = "Alat refleksi ini dikembangkan oleh Pilar Asa Cendekia, terinspirasi dari berbagai pendekatan asesmen. Digunakan untuk tujuan pengembangan diri dan coaching reflektif. Hasil bersifat deskriptif, bukan diagnostik, dan tidak menunjukkan benar atau salah. Gunakan sebagai panduan refleksi, bukan dasar tunggal pengambilan keputusan.";
+
+/* Ganti dengan URL Web App Google Apps Script setelah deploy (lihat Code_SendEmail_Values.gs) */
+const EMAIL_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbyk_zq5cyZk_n8l7QKfblTKFdKTDlkX-Ok767SBIeQmWKyz0rJs6v98xQBXr1r4_-so/exec";
+
+/* ================= STATE ================= */
+let currentIndex = 0;
+let sortResult = {};      // no -> level key
+let history = [];         // stack of no's answered, for "back"
+let alwaysPicks = [];     // array of value.no, in click order
+let oftenPicks = [];
+
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
+/* ================= INTRO / IDENTITY ================= */
+document.getElementById('f-tanggal').valueAsDate = new Date();
+
+function validateIdentity(){
+  let ok = true;
+  const checks = [
+    ['f-nama', v=>v.trim().length>0, 'err-nama'],
+    ['f-instansi', v=>v.trim().length>0, 'err-instansi'],
+    ['f-usia', v=>v.trim().length>0 && Number(v)>0, 'err-usia'],
+    ['f-tanggal', v=>v.trim().length>0, 'err-tanggal'],
+    ['f-email', v=>/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v.trim()), 'err-email'],
+  ];
+  checks.forEach(([fid, test, eid])=>{
+    const val = document.getElementById(fid).value;
+    const pass = test(val);
+    document.getElementById(eid).style.display = pass ? 'none' : 'block';
+    if(!pass) ok = false;
+  });
+  return ok;
+}
+
+document.getElementById('btnStart').addEventListener('click', ()=>{
+  if(!validateIdentity()){
+    document.querySelector('.identity-card').scrollIntoView({behavior:'smooth', block:'center'});
+    return;
+  }
+  buildLevelButtons();
+  renderSortCard();
+  show('screen-sort');
+});
+
+/* ================= SORT SCREEN ================= */
+function buildLevelButtons(){
+  const wrap = document.getElementById('levelBtns');
+  wrap.innerHTML = '';
+  LEVELS.forEach(lvl=>{
+    const btn = document.createElement('button');
+    btn.className = 'level-btn';
+    btn.innerHTML = `<span class="level-dot" style="background:${lvl.color}"></span>
+      <span><b style="display:block">${lvl.label}</b><small>${lvl.desc}</small></span>`;
+    btn.addEventListener('click', ()=> answerCurrent(lvl.key));
+    wrap.appendChild(btn);
+  });
+}
+
+function renderSortCard(){
+  const v = VALUES[currentIndex];
+  document.getElementById('sortValue').textContent = v.value;
+  document.getElementById('sortKet').textContent = v.ket;
+  document.getElementById('sortProgressLabel').textContent = `Kartu ${currentIndex+1} dari ${VALUES.length}`;
+  const pct = Math.round((currentIndex)/VALUES.length*100);
+  document.getElementById('sortProgressPct').textContent = pct + '%';
+  document.getElementById('sortProgressFill').style.width = pct + '%';
+  document.getElementById('btnBack').disabled = history.length === 0;
+  document.getElementById('btnBack').style.visibility = history.length === 0 ? 'hidden' : 'visible';
+}
+
+function answerCurrent(levelKey){
+  const v = VALUES[currentIndex];
+  sortResult[v.no] = levelKey;
+  history.push(v.no);
+  currentIndex++;
+  if(currentIndex >= VALUES.length){
+    finishSorting();
+  } else {
+    renderSortCard();
+  }
+}
+
+document.getElementById('btnBack').addEventListener('click', ()=>{
+  if(history.length === 0) return;
+  const lastNo = history.pop();
+  delete sortResult[lastNo];
+  currentIndex--;
+  renderSortCard();
+});
+
+function finishSorting(){
+  buildRefinePile('always', 'alwaysPile', 'alwaysPickCount', alwaysPicks, 'btnAlwaysNext');
+  show('screen-refine-always');
+}
+
+/* ================= REFINE SCREENS ================= */
+function buildRefinePile(levelKey, pileElId, countElId, picksArr, nextBtnId){
+  const pileEl = document.getElementById(pileElId);
+  pileEl.innerHTML = '';
+  const items = VALUES.filter(v => sortResult[v.no] === levelKey);
+  picksArr.length = 0;
+
+  if(items.length === 0){
+    pileEl.innerHTML = `<div class="empty-note">Tidak ada kartu yang ditandai sebagai "${LEVEL_MAP[levelKey].label}". Anda bisa lanjut ke langkah berikutnya.</div>`;
+    document.getElementById(countElId).textContent = 'Tidak ada kartu di kelompok ini';
+    document.getElementById(nextBtnId).disabled = false;
+    return;
+  }
+
+  items.forEach(v=>{
+    const el = document.createElement('div');
+    el.className = 'pile-item';
+    el.dataset.no = v.no;
+    el.innerHTML = `<span class="rank-badge"></span>${v.value}<span class="cat">${v.kategori}</span>`;
+    el.addEventListener('click', ()=> togglePick(v.no, picksArr, pileElId, countElId, nextBtnId));
+    pileEl.appendChild(el);
+  });
+  updatePickCount(picksArr, countElId, nextBtnId, items.length);
+}
+
+function togglePick(no, picksArr, pileElId, countElId, nextBtnId){
+  const idx = picksArr.indexOf(no);
+  if(idx >= 0){
+    picksArr.splice(idx,1);
+  } else {
+    if(picksArr.length >= 5) return; // max 5
+    picksArr.push(no);
+  }
+  refreshPileUI(picksArr, pileElId);
+  const totalItems = document.getElementById(pileElId).children.length;
+  updatePickCount(picksArr, countElId, nextBtnId, totalItems);
+}
+
+function refreshPileUI(picksArr, pileElId){
+  const pileEl = document.getElementById(pileElId);
+  Array.from(pileEl.children).forEach(el=>{
+    const no = Number(el.dataset.no);
+    const rank = picksArr.indexOf(no);
+    const badge = el.querySelector('.rank-badge');
+    if(rank >= 0){
+      el.classList.add('picked');
+      badge.textContent = rank+1;
+    } else {
+      el.classList.remove('picked');
+      badge.textContent = '';
+    }
+  });
+}
+
+function updatePickCount(picksArr, countElId, nextBtnId, totalItems){
+  const n = picksArr.length;
+  const maxAllowed = Math.min(5, totalItems);
+  document.getElementById(countElId).textContent = `${n} dipilih (min. ${Math.min(3,totalItems)}, maks. ${maxAllowed})`;
+  const minNeeded = Math.min(3, totalItems);
+  document.getElementById(nextBtnId).disabled = n < minNeeded;
+}
+
+document.getElementById('btnBackToSort').addEventListener('click', ()=>{
+  currentIndex = VALUES.length - 1;
+  const lastNo = history[history.length-1];
+  delete sortResult[lastNo];
+  history.pop();
+  renderSortCard();
+  show('screen-sort');
+});
+
+document.getElementById('btnAlwaysNext').addEventListener('click', ()=>{
+  buildRefinePile('often', 'oftenPile', 'oftenPickCount', oftenPicks, 'btnOftenNext');
+  show('screen-refine-often');
+});
+
+document.getElementById('btnBackToAlways').addEventListener('click', ()=>{
+  show('screen-refine-always');
+});
+
+document.getElementById('btnOftenNext').addEventListener('click', ()=>{
+  renderResults();
+  show('screen-results');
+});
+
+/* ================= RESULTS ================= */
+function getValueByNo(no){ return VALUES.find(v=>v.no===no); }
+
+function formatTanggalIndo(raw){
+  if(!raw) return '-';
+  const d = new Date(raw + 'T00:00:00');
+  return d.toLocaleDateString('id-ID', {day:'numeric', month:'long', year:'numeric'});
+}
+
+function getIdentity(){
+  return {
+    nama: document.getElementById('f-nama').value.trim(),
+    instansi: document.getElementById('f-instansi').value.trim(),
+    usia: document.getElementById('f-usia').value.trim(),
+    tanggal: formatTanggalIndo(document.getElementById('f-tanggal').value),
+    email: document.getElementById('f-email').value.trim(),
+  };
+}
+
+function renderResults(){
+  const id = getIdentity();
+  document.getElementById('resultIdentity').innerHTML = `
+    <div><b>Nama</b>${id.nama}</div>
+    <div><b>Instansi</b>${id.instansi}</div>
+    <div><b>Usia</b>${id.usia} tahun</div>
+    <div><b>Tanggal</b>${id.tanggal}</div>
+    <div style="grid-column:1/-1"><b>Email</b>${id.email}</div>
+  `;
+
+  // Core Values = top 3 of alwaysPicks
+  const coreNos = alwaysPicks.slice(0,3);
+  const coreEl = document.getElementById('coreValuesList');
+  coreEl.innerHTML = '';
+  coreNos.forEach((no, i)=>{
+    const v = getValueByNo(no);
+    coreEl.innerHTML += `<div class="value-chip-lg">
+      <span class="rank">${i+1}</span><span class="vname">${v.value}</span><span class="vcat">${v.kategori}</span>
+      <p>${v.ket}</p>
+    </div>`;
+  });
+  document.getElementById('coreNarrative').textContent = CORE_NARRATIVE;
+
+  // Guiding Values = all oftenPicks (3-5)
+  const guideEl = document.getElementById('guidingValuesList');
+  guideEl.innerHTML = '';
+  oftenPicks.forEach((no, i)=>{
+    const v = getValueByNo(no);
+    guideEl.innerHTML += `<div class="value-chip">
+      <span class="vname">${i+1}. ${v.value}</span><span class="vcat">${v.kategori}</span>
+      <p>${v.ket}</p>
+    </div>`;
+  });
+  document.getElementById('guidingNarrative').textContent = GUIDING_NARRATIVE;
+
+  // Full breakdown
+  const bdEl = document.getElementById('fullBreakdown');
+  bdEl.innerHTML = '';
+  [...LEVELS].reverse().forEach(lvl=>{
+    const items = VALUES.filter(v=>sortResult[v.no]===lvl.key);
+    bdEl.innerHTML += `<div class="bd-level">
+      <div class="bd-level-title"><span class="level-dot" style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${lvl.color}"></span>${lvl.label} (${items.length})</div>
+      <div class="bd-tags">${items.map(v=>`<span class="bd-tag">${v.value}</span>`).join('') || '<span class="bd-tag">—</span>'}</div>
+    </div>`;
+  });
+
+  document.getElementById('disclaimerText').textContent = DISCLAIMER;
+}
+
+document.getElementById('btnRestart').addEventListener('click', ()=>{
+  if(!confirm('Ulangi asesmen dari awal? Semua jawaban akan dihapus.')) return;
+  currentIndex = 0; sortResult = {}; history = []; alwaysPicks = []; oftenPicks = [];
+  document.getElementById('shareStatus').style.display = 'none';
+  show('screen-intro');
+});
+
+/* ================= PDF EXPORT ================= */
+function buildResultPdfBase64(){
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({unit:'pt', format:'a4'});
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const marginX = 40;
+  const contentWidth = pageWidth - marginX*2;
+  let y = 30;
+
+  const id = getIdentity();
+
+  function checkPageBreak(needed){
+    if(y + needed > pageHeight - 40){
+      doc.addPage();
+      y = 40;
+    }
+  }
+
+  // Header banner
+  doc.setFillColor(79,70,229);
+  doc.roundedRect(marginX, y, contentWidth, 58, 6, 6, 'F');
+  doc.setTextColor(255,255,255);
+  doc.setFont(undefined,'bold');
+  doc.setFontSize(8);
+  doc.text('PILAR ASA CENDEKIA', pageWidth/2, y+16, {align:'center'});
+  doc.setFontSize(18);
+  doc.text('Values Discovery', pageWidth/2, y+34, {align:'center'});
+  doc.setFont(undefined,'normal');
+  doc.setFontSize(8.5);
+  doc.text('Ringkasan Hasil Refleksi Nilai', pageWidth/2, y+48, {align:'center'});
+  y += 72;
+
+  doc.setTextColor(30,41,59);
+  doc.setFontSize(8.5);
+  doc.setFont(undefined,'bold');
+  doc.text(`Nama: ${id.nama}  |  Instansi: ${id.instansi}  |  Usia: ${id.usia}`, marginX, y);
+  y += 12;
+  doc.text(`Tanggal: ${id.tanggal}  |  Email: ${id.email}`, marginX, y);
+  y += 22;
+
+  function sectionTitle(title, r,g,b){
+    checkPageBreak(24);
+    doc.setFillColor(r,g,b);
+    doc.rect(marginX, y, 4, 16, 'F');
+    doc.setTextColor(30,41,59);
+    doc.setFont(undefined,'bold');
+    doc.setFontSize(12.5);
+    doc.text(title, marginX+10, y+12);
+    y += 24;
+  }
+
+  function valueBlock(rankLabel, v, r,g,b, bgR,bgG,bgB){
+    const ketLines = doc.splitTextToSize(v.ket, contentWidth-20);
+    const boxH = 34 + ketLines.length*11;
+    checkPageBreak(boxH+8);
+    doc.setFillColor(bgR,bgG,bgB);
+    doc.roundedRect(marginX, y, contentWidth, boxH, 5, 5, 'F');
+    doc.setTextColor(r,g,b);
+    doc.setFont(undefined,'bold');
+    doc.setFontSize(11.5);
+    doc.text(`${rankLabel}  ${v.value}`, marginX+12, y+16);
+    doc.setTextColor(100,116,139);
+    doc.setFont(undefined,'normal');
+    doc.setFontSize(8);
+    doc.text(v.kategori.toUpperCase(), marginX+12, y+27);
+    doc.setTextColor(71,85,105);
+    doc.setFontSize(9);
+    doc.text(ketLines, marginX+12, y+27 + 10);
+    y += boxH + 8;
+  }
+
+  sectionTitle('CORE VALUES — Fondasi Hidup Anda', 180,83,9);
+  const coreNos = alwaysPicks.slice(0,3);
+  coreNos.forEach((no,i)=>{
+    const v = getValueByNo(no);
+    valueBlock(`${i+1}.`, v, 180,83,9, 255,251,235);
+  });
+  checkPageBreak(40);
+  doc.setTextColor(71,85,105);
+  doc.setFont(undefined,'normal');
+  doc.setFontSize(8.5);
+  const coreLines = doc.splitTextToSize(CORE_NARRATIVE, contentWidth);
+  doc.text(coreLines, marginX, y);
+  y += coreLines.length*10 + 18;
+
+  sectionTitle('GUIDING VALUES — Panduan Keputusan Anda', 79,70,229);
+  oftenPicks.forEach((no,i)=>{
+    const v = getValueByNo(no);
+    valueBlock(`${i+1}.`, v, 79,70,229, 245,244,255);
+  });
+  checkPageBreak(40);
+  doc.setTextColor(71,85,105);
+  doc.setFont(undefined,'normal');
+  doc.setFontSize(8.5);
+  const guideLines = doc.splitTextToSize(GUIDING_NARRATIVE, contentWidth);
+  doc.text(guideLines, marginX, y);
+  y += guideLines.length*10 + 18;
+
+  // Disclaimer
+  checkPageBreak(50);
+  doc.setDrawColor(226,232,240);
+  doc.line(marginX, y, marginX+contentWidth, y);
+  y += 14;
+  doc.setTextColor(148,163,184);
+  doc.setFontSize(7.5);
+  const discLines = doc.splitTextToSize(DISCLAIMER, contentWidth);
+  doc.text(discLines, marginX, y);
+  y += discLines.length*9 + 6;
+  const footerLine1 = '(c) 2026 Pilar Asa Cendekia | www.pilarasacendekia.com';
+  const footerLine2 = 'This document is the property of Pilar Asa Cendekia - For individual reflection and coaching use only.';
+  doc.setFontSize(7);
+  doc.setTextColor(148,163,184);
+  doc.text(footerLine1, pageWidth/2, pageHeight-30, {align:'center'});
+  doc.text(footerLine2, pageWidth/2, pageHeight-21, {align:'center'});
+
+  const dataUri = doc.output('datauristring');
+  return dataUri.split(',')[1];
+}
+
+document.getElementById('btnDownloadPdf').addEventListener('click', ()=>{
+  const { jsPDF } = window.jspdf;
+  const base64 = buildResultPdfBase64();
+  const id = getIdentity();
+  const link = document.createElement('a');
+  link.href = 'data:application/pdf;base64,' + base64;
+  link.download = `Values_CardSort_${(id.nama||'Peserta').replace(/\s+/g,'_')}.pdf`;
+  link.click();
+});
+
+/* ================= EMAIL SHARE ================= */
+async function attemptShareResult(){
+  const statusEl = document.getElementById('shareStatus');
+  const btn = document.getElementById('btnShare');
+  const id = getIdentity();
+
+  if(EMAIL_WEB_APP_URL.indexOf('TEMPEL_URL_WEB_APP_ANDA_DI_SINI') >= 0){
+    statusEl.className = 'status-msg err';
+    statusEl.style.display = 'block';
+    statusEl.textContent = 'Fitur kirim email belum diaktifkan. Admin perlu memasang URL Web App Google Apps Script terlebih dahulu (lihat Code_SendEmail_Values.gs).';
+    return;
+  }
+
+  btn.disabled = true;
+  statusEl.className = 'status-msg pending';
+  statusEl.style.display = 'block';
+  statusEl.textContent = 'Mengirim hasil ke email Anda...';
+
+  try{
+    const pdfBase64 = buildResultPdfBase64();
+    const coreNos = alwaysPicks.slice(0,3);
+    const payload = {
+      nama: id.nama, instansi: id.instansi, usia: id.usia,
+      tanggal: id.tanggal, email: id.email,
+      coreValues: coreNos.map(no=>getValueByNo(no).value).join(', '),
+      guidingValues: oftenPicks.map(no=>getValueByNo(no).value).join(', '),
+      pdfBase64: pdfBase64
+    };
+
+    try{
+      const resp = await fetch(EMAIL_WEB_APP_URL, {
+        method:'POST',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify(payload)
+      });
+      if(resp.ok){
+        statusEl.className = 'status-msg ok';
+        statusEl.textContent = '✓ Hasil berhasil dikirim ke ' + id.email;
+      } else {
+        throw new Error('Respons tidak OK');
+      }
+    } catch(err){
+      // fallback no-cors: fire-and-forget
+      await fetch(EMAIL_WEB_APP_URL, {
+        method:'POST', mode:'no-cors',
+        headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body: JSON.stringify(payload)
+      });
+      statusEl.className = 'status-msg ok';
+      statusEl.textContent = '✓ Permintaan terkirim. Silakan cek email ' + id.email + ' beberapa saat lagi.';
+    }
+  } catch(err){
+    statusEl.className = 'status-msg err';
+    statusEl.textContent = 'Gagal mengirim hasil. Coba lagi atau unduh PDF secara manual.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+document.getElementById('btnShare').addEventListener('click', attemptShareResult);
+</script>
+</body>
+</html>
