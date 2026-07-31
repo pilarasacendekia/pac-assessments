@@ -1036,6 +1036,19 @@ async function attemptShareResult() {
         pdfBase64: buildResultPdfBase64()
     };
 
+    // Simpan hasil (tanpa PDF) ke localStorage bersama untuk langkah CENDO berikutnya
+    try {
+        const emailKey = (email || '').trim().toLowerCase();
+        if (emailKey) {
+            localStorage.setItem('pac_assess_strength_' + emailKey, JSON.stringify({
+                email, nama, instansi, tanggal,
+                strengthSkills: zoneItems.strength, growthSkills: zoneItems.growth,
+                responsibilitySkills: zoneItems.responsibility, drainSkills: zoneItems.drain,
+                savedAt: Date.now()
+            }));
+        }
+    } catch (e) { console.warn('Gagal menyimpan hasil Strength ke localStorage', e); }
+
     try {
         // Coba kirim dengan mode normal dulu agar bisa membaca status sukses/gagal yang sebenarnya
         const response = await fetch(EMAIL_WEB_APP_URL, {
@@ -1156,6 +1169,16 @@ renderNav();
 renderQuestion();
 updateResults();
 updateIdentityLock();
+
+// Prefill email dari URL (?email=...) kalau datang dari halaman hub
+(function() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get('email');
+    const field = document.getElementById('f-email');
+    if (email && field) field.value = email;
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>
