@@ -1020,6 +1020,19 @@ async function attemptShareResult(){
     pdfBase64: buildResultPdfBase64()
   };
 
+  // Simpan hasil (tanpa PDF, supaya ringan) ke localStorage bersama supaya bisa langsung
+  // dibaca oleh langkah CENDO berikutnya dalam alur satu halaman — tanpa mengubah fitur kirim email di atas.
+  try {
+    const emailKey = (idn.email || '').trim().toLowerCase();
+    if (emailKey) {
+      localStorage.setItem('pac_assess_disc_' + emailKey, JSON.stringify({
+        nama: idn.nama, instansi: idn.instansi, usia: idn.usia, tanggal: formatTanggal(idn.tanggalRaw), email: idn.email,
+        skorD: r.seg3.D, skorI: r.seg3.I, skorS: r.seg3.S, skorC: r.seg3.C, gayaDominan: dominantLabel,
+        savedAt: Date.now()
+      }));
+    }
+  } catch (e) { console.warn('Gagal menyimpan hasil DISC ke localStorage', e); }
+
   try{
     const response = await fetch(EMAIL_WEB_APP_URL, {
       method:'POST',
@@ -1056,6 +1069,16 @@ async function attemptShareResult(){
 document.getElementById('btnShare').addEventListener('click', attemptShareResult);
 
 updateProgress();
+
+// Prefill email dari URL (?email=...) kalau datang dari halaman hub
+(function() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get('email');
+    const field = document.getElementById('f-email');
+    if (email && field) field.value = email;
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>

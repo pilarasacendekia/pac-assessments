@@ -772,6 +772,19 @@ async function attemptShareResult(){
       pdfBase64: pdfBase64
     };
 
+    // Simpan hasil (tanpa PDF) ke localStorage bersama untuk langkah CENDO berikutnya
+    try {
+      const emailKey = (id.email || '').trim().toLowerCase();
+      if (emailKey) {
+        localStorage.setItem('pac_assess_value_' + emailKey, JSON.stringify({
+          nama: id.nama, instansi: id.instansi, usia: id.usia, tanggal: id.tanggal, email: id.email,
+          coreValues: coreNos.map(no=>getValueByNo(no).value),
+          guidingValues: oftenPicks.map(no=>getValueByNo(no).value),
+          savedAt: Date.now()
+        }));
+      }
+    } catch (e) { console.warn('Gagal menyimpan hasil Value ke localStorage', e); }
+
     try{
       const resp = await fetch(EMAIL_WEB_APP_URL, {
         method:'POST',
@@ -803,6 +816,16 @@ async function attemptShareResult(){
 }
 
 document.getElementById('btnShare').addEventListener('click', attemptShareResult);
+
+// Prefill email dari URL (?email=...) kalau datang dari halaman hub
+(function() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const email = params.get('email');
+    const field = document.getElementById('f-email');
+    if (email && field) field.value = email;
+  } catch (e) {}
+})();
 </script>
 </body>
 </html>

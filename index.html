@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Asesmen | Pilar Asa Cendekia</title>
+<title>Asesmen &amp; Career Roadmap | Pilar Asa Cendekia</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,560;0,9..144,680;1,9..144,500&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet">
@@ -20,6 +20,7 @@
     --S:#3F6B4C;
     --C:#33587E;
     --radius:14px;
+    --ok:#3F6B4C;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -54,10 +55,22 @@
   }
   a{color:inherit; text-decoration:none;}
   .wrap{max-width:760px; margin:0 auto; padding:64px 22px 80px; position:relative; z-index:1;}
-  header{text-align:center; margin-bottom:48px;}
+  header{text-align:center; margin-bottom:36px;}
   header h1{font-size:clamp(28px,4.5vw,40px); margin-top:14px;}
   header p{color:var(--muted); margin-top:12px; font-size:15.5px;}
-  .cards{display:flex; flex-direction:column; gap:16px;}
+
+  .identity-box{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px 22px; margin-bottom:28px;
+  }
+  .identity-box label{font-size:12.5px; color:var(--muted); font-weight:600; display:block; margin-bottom:5px;}
+  .identity-box input{
+    width:100%; padding:10px 12px; border:1px solid var(--line); border-radius:8px;
+    font-family:'Inter',sans-serif; font-size:14px; background:#fff; color:var(--ink);
+  }
+  .identity-grid{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+
+  .cards{display:flex; flex-direction:column; gap:16px; margin-top:22px;}
   .card{
     display:flex; align-items:center; gap:18px;
     background:var(--card);
@@ -65,12 +78,14 @@
     border-radius:var(--radius);
     padding:22px 24px;
     transition:transform .15s ease, box-shadow .15s ease, border-color .15s ease;
+    position:relative;
   }
-  .card:hover{
+  .card.enabled:hover{
     transform:translateY(-2px);
     box-shadow:0 8px 24px #00000012;
     border-color:#00000022;
   }
+  .card.disabled{opacity:.45; pointer-events:none;}
   .dot{
     width:44px; height:44px; border-radius:50%;
     flex-shrink:0;
@@ -85,6 +100,30 @@
   .card-body h3{font-size:19px;}
   .card-body p{margin:6px 0 0; color:var(--muted); font-size:14px;}
   .arrow{color:var(--muted); font-size:20px; flex-shrink:0;}
+  .badge-done{
+    font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
+    color:var(--ok); background:#3F6B4C1a; padding:4px 10px; border-radius:999px;
+    flex-shrink:0;
+  }
+
+  .progress-track{display:flex; gap:6px; margin:26px 0 8px;}
+  .progress-seg{flex:1; height:5px; border-radius:3px; background:var(--line);}
+  .progress-seg.done{background:var(--ok);}
+  .progress-label{font-size:12.5px; color:var(--muted); text-align:center; margin-bottom:8px;}
+
+  .next-step{
+    margin-top:28px; text-align:center; padding:26px 22px;
+    background:var(--ink); border-radius:var(--radius); color:#F5EFE2;
+  }
+  .next-step p{color:#D8CCAC; font-size:13.5px; margin:6px 0 16px;}
+  .next-step .btn{
+    display:inline-block; background:#F5EFE2; color:var(--ink); font-weight:600;
+    padding:12px 24px; border-radius:10px; font-size:14.5px;
+  }
+  .next-step.locked{background:var(--card); color:var(--muted); border:1px solid var(--line);}
+  .next-step.locked p{color:var(--muted);}
+  .next-step.locked .btn{background:var(--line); color:var(--muted); pointer-events:none;}
+
   footer{text-align:center; margin-top:56px; color:var(--muted); font-size:13px;}
 </style>
 </head>
@@ -93,43 +132,135 @@
 <div class="wrap">
   <header>
     <div class="eyebrow">Pilar Asa Cendekia</div>
-    <h1>Pusat Asesmen</h1>
-    <p>Pilih salah satu asesmen di bawah untuk memulai. Hasil dapat diunduh sebagai PDF di akhir sesi.</p>
+    <h1>Career Roadmap Journey</h1>
+    <p>Selesaikan tiga asesmen singkat, ngobrol dengan CENDO, lalu dapatkan Career Roadmap lengkap Anda.</p>
   </header>
 
+  <div class="identity-box">
+    <label>Email Anda (dipakai untuk melacak progres &amp; mengambil hasil di langkah berikutnya)</label>
+    <input type="email" id="emailInput" placeholder="nama@email.com" autocomplete="email">
+  </div>
+
+  <div class="progress-label" id="progressLabel">0 dari 3 asesmen selesai</div>
+  <div class="progress-track">
+    <div class="progress-seg" id="seg-disc"></div>
+    <div class="progress-seg" id="seg-strength"></div>
+    <div class="progress-seg" id="seg-value"></div>
+  </div>
+
   <div class="cards">
-    <a class="card" href="PAC%20-%20DISC%20Assessment.html">
+    <a class="card enabled" id="card-disc" href="#">
       <div class="dot" style="background:var(--D);">DISC</div>
       <div class="card-body">
         <div class="eyebrow">Profil Perilaku Kerja</div>
         <h3>Tes DISC</h3>
         <p>Kenali pola perilaku dominan Anda di lingkungan kerja.</p>
       </div>
+      <span class="badge-done" id="badge-disc" style="display:none;">✓ Selesai</span>
       <div class="arrow">→</div>
     </a>
 
-    <a class="card" href="PAC%20-%20Strength%20Assessment.html">
+    <a class="card enabled" id="card-strength" href="#">
       <div class="dot" style="background:var(--S);">STR</div>
       <div class="card-body">
         <div class="eyebrow">Zona Kekuatan</div>
         <h3>Strength Assessment</h3>
         <p>Petakan kekuatan dan minat Anda ke dalam zona pengembangan.</p>
       </div>
+      <span class="badge-done" id="badge-strength" style="display:none;">✓ Selesai</span>
       <div class="arrow">→</div>
     </a>
 
-    <a class="card" href="PAC%20-%20Value%20Assessment.html">
+    <a class="card enabled" id="card-value" href="#">
       <div class="dot" style="background:var(--C);">VAL</div>
       <div class="card-body">
         <div class="eyebrow">Nilai Kerja</div>
         <h3>Value Assessment</h3>
         <p>Temukan nilai-nilai inti yang mendorong keputusan dan motivasi kerja Anda.</p>
       </div>
+      <span class="badge-done" id="badge-value" style="display:none;">✓ Selesai</span>
       <div class="arrow">→</div>
     </a>
   </div>
 
+  <div class="next-step locked" id="nextStep">
+    <div class="eyebrow" style="color:inherit; opacity:.7;">Langkah Berikutnya</div>
+    <h3 style="margin-top:8px;">Ngobrol dengan CENDO</h3>
+    <p id="nextStepText">Selesaikan ketiga asesmen di atas dulu untuk membuka langkah ini.</p>
+    <a class="btn" id="btnToCendo" href="#">Lanjut ke CENDO →</a>
+  </div>
+
   <footer>Pilar Asa Cendekia — pilarasacendekia.com</footer>
 </div>
+
+<script>
+function getEmailKey() {
+  return document.getElementById('emailInput').value.trim().toLowerCase();
+}
+
+function checkStatus() {
+  const email = getEmailKey();
+  const hasEmail = !!email;
+  const discDone = hasEmail && !!localStorage.getItem('pac_assess_disc_' + email);
+  const strengthDone = hasEmail && !!localStorage.getItem('pac_assess_strength_' + email);
+  const valueDone = hasEmail && !!localStorage.getItem('pac_assess_value_' + email);
+
+  document.getElementById('badge-disc').style.display = discDone ? 'inline-block' : 'none';
+  document.getElementById('badge-strength').style.display = strengthDone ? 'inline-block' : 'none';
+  document.getElementById('badge-value').style.display = valueDone ? 'inline-block' : 'none';
+
+  document.getElementById('seg-disc').className = 'progress-seg' + (discDone ? ' done' : '');
+  document.getElementById('seg-strength').className = 'progress-seg' + (strengthDone ? ' done' : '');
+  document.getElementById('seg-value').className = 'progress-seg' + (valueDone ? ' done' : '');
+
+  const doneCount = [discDone, strengthDone, valueDone].filter(Boolean).length;
+  document.getElementById('progressLabel').textContent = hasEmail
+    ? (doneCount + ' dari 3 asesmen selesai untuk ' + email)
+    : 'Isi email Anda di atas dulu untuk mulai melacak progres';
+
+  const links = {
+    disc: 'PAC%20-%20DISC%20Assessment.html',
+    strength: 'PAC%20-%20Strength%20Assessment.html',
+    value: 'PAC%20-%20Value%20Assessment.html'
+  };
+  document.getElementById('card-disc').href = links.disc + (hasEmail ? ('?email=' + encodeURIComponent(email)) : '');
+  document.getElementById('card-strength').href = links.strength + (hasEmail ? ('?email=' + encodeURIComponent(email)) : '');
+  document.getElementById('card-value').href = links.value + (hasEmail ? ('?email=' + encodeURIComponent(email)) : '');
+
+  const nextStep = document.getElementById('nextStep');
+  const nextStepText = document.getElementById('nextStepText');
+  const btnToCendo = document.getElementById('btnToCendo');
+
+  if (doneCount === 3) {
+    nextStep.className = 'next-step';
+    nextStepText.textContent = 'Ketiga asesmen sudah lengkap. CENDO siap membantu Anda menyusun Career Roadmap.';
+    btnToCendo.href = 'cendo.html?email=' + encodeURIComponent(email);
+  } else {
+    nextStep.className = 'next-step locked';
+    nextStepText.textContent = hasEmail
+      ? ('Masih ' + (3 - doneCount) + ' asesmen lagi sebelum langkah ini terbuka.')
+      : 'Selesaikan ketiga asesmen di atas dulu untuk membuka langkah ini.';
+    btnToCendo.href = '#';
+  }
+}
+
+document.getElementById('emailInput').addEventListener('input', checkStatus);
+
+// Isi email otomatis dari URL kalau ada (mis. kembali dari halaman asesmen)
+const urlParams = new URLSearchParams(window.location.search);
+if (urlParams.get('email')) {
+  document.getElementById('emailInput').value = urlParams.get('email');
+}
+// Atau dari email yang terakhir dipakai (localStorage) supaya tidak perlu ketik ulang
+if (!document.getElementById('emailInput').value) {
+  const lastEmail = localStorage.getItem('pac_last_email');
+  if (lastEmail) document.getElementById('emailInput').value = lastEmail;
+}
+document.getElementById('emailInput').addEventListener('change', function() {
+  localStorage.setItem('pac_last_email', this.value.trim());
+});
+
+checkStatus();
+</script>
 </body>
 </html>
