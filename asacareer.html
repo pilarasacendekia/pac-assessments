@@ -133,17 +133,17 @@
     </div>
   </div>
 
-  <div class="thread" id="thread"></div>
+  <div class="thread" id="thread" style="display:none;"></div>
   <div class="roadmap-bar" id="roadmapBar" style="display:none;">
     <button class="genBtn" id="genRoadmapBtn" onclick="generateRoadmapFromChat()">Buat draf roadmap dari percakapan ini</button>
     <span class="status" id="genStatus" style="font-size:12px; color:var(--ink-soft); font-style:italic;"></span>
   </div>
-  <div class="composer" id="composer">
+  <div class="composer" id="composer" style="display:none;">
     <textarea id="input" placeholder="Ketik pesan Anda…" onkeydown="handleKey(event)"></textarea>
     <button class="send" id="sendBtn" onclick="sendMessage()">Kirim</button>
   </div>
 
-  <div class="canvasWrap" id="canvasWrap">
+  <div class="canvasWrap" id="canvasWrap" style="display:none;">
     <div class="legend">
       <span class="tag tag-dari_coachee">dari coachee</span>
       <span class="tag tag-dari_assessment">dari assessment</span>
@@ -192,7 +192,9 @@ window.addEventListener('message', function(evt) {
 });
 
 // Jalur cadangan: polling localStorage — lebih andal daripada postMessage saat dibuka dari file lokal (file://)
-let lastHandledSubmitTime = 0;
+// lastHandledSubmitTime diawali dengan waktu saat halaman dibuka — supaya sinyal lama dari sesi
+// sebelumnya (sebelum halaman ini dibuka) otomatis diabaikan, bukan dianggap baru.
+let lastHandledSubmitTime = Date.now();
 setInterval(function() {
   try {
     const raw = localStorage.getItem('cendo_roadmap_submitted_flag');
@@ -201,8 +203,8 @@ setInterval(function() {
     if (flag.time && flag.time > lastHandledSubmitTime) {
       lastHandledSubmitTime = flag.time;
       if (roadmapSubmitHandled) return;
-      // Hanya proses kalau chat sedang aktif (bukan masih di layar setup) dan belum diproses
-      if (document.getElementById('thread').style.display !== 'none') {
+      // Hanya proses kalau sesi memang sedang aktif (matchedRecord terisi berarti sudah lewat layar setup)
+      if (matchedRecord) {
         roadmapSubmitHandled = true;
         console.log('Roadmap disubmit dari tab desain (localStorage):', flag.data);
         handleRoadmapSubmitted();
@@ -1510,6 +1512,7 @@ function emailRoadmap() {
 }
 
 function backToChat() {
+  document.getElementById('setup').style.display = 'none';
   document.getElementById('canvasWrap').style.display = 'none';
   document.getElementById('thread').style.display = 'flex';
   document.getElementById('composer').style.display = 'flex';
