@@ -118,7 +118,7 @@
     </div>
     <div>
       <label class="field-label">Instansi</label>
-      <input type="text" id="setupInstitusi" placeholder="mis. Politeknik Negeri Malang" />
+      <input type="text" id="setupInstitusi" placeholder="nama kampus / organisasi / perusahaan" />
     </div>
     <div>
       <label class="field-label">Email</label>
@@ -918,7 +918,7 @@ async function generateRoadmapFromChat() {
     // Self selalu diisi langsung dari hasil lookup database assessment — lebih akurat daripada inferensi dari transkrip
     if (matchedRecord) {
       parsed.self = {
-        kekuatan_utama: { value: matchedRecord.strengths, source_label: "dari_assessment" },
+        kekuatan_utama: { value: matchedRecord.strengths.slice(0, 3), source_label: "dari_assessment" },
         nilai_hidup: { value: formatNilaiHidup(matchedRecord), source_label: "dari_assessment" },
         kepribadian_disc: { value: matchedRecord.disc, source_label: "dari_assessment" }
       };
@@ -1001,6 +1001,20 @@ function buildRoadmapHtml(data) {
   Object.keys(tokenMap).forEach(token => {
     finalHtml = finalHtml.split(token).join(tokenMap[token]);
   });
+
+  // Judul dokumen menentukan nama file default saat "Simpan sebagai PDF"
+  const pdfTitle = 'START Career Roadmap - ' + name;
+  if (/<title>[\s\S]*?<\/title>/i.test(finalHtml)) {
+    finalHtml = finalHtml.replace(/<title>[\s\S]*?<\/title>/i, '<title>' + escapeHtml(pdfTitle) + '</title>');
+  } else {
+    finalHtml = finalHtml.replace('<head>', '<head><title>' + escapeHtml(pdfTitle) + '</title>');
+  }
+
+  // Tombol "Kembali ke beranda" — link absolut karena dokumen ini dibuka sebagai blob: (bukan halaman biasa)
+  const baseUrl = window.location.href.replace(/[^/]*$/, '');
+  const backBtnHtml = `<a href="${escapeHtml(baseUrl + 'index.html')}" style="display:inline-block; background:none; border:1px solid #152B3E; color:#152B3E; padding:9px 16px; border-radius:8px; font-weight:600; font-size:13px; text-decoration:none; font-family:'Manrope',sans-serif; margin-right:8px;">← Kembali ke Beranda</a>`;
+  finalHtml = finalHtml.replace('<button onclick="window.print()"', backBtnHtml + '<button onclick="window.print()"');
+
   return finalHtml;
 }
 
@@ -1023,6 +1037,7 @@ function openRoadmapInDesignTemplate(data) {
   openBlobLink(finalHtml, '📄 Buka Draf Roadmap (tab baru)', status);
 
   const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'confirm-submit-btn';
   confirmBtn.textContent = 'Sudah selesai / dikirim →';
   confirmBtn.style.cssText = 'margin-left:2px;background:none;border:1px solid var(--border);color:var(--ink-soft);padding:8px 14px;border-radius:8px;font-weight:500;font-size:12.5px;font-family:Inter,sans-serif;cursor:pointer;';
   confirmBtn.onclick = function() {
@@ -1119,27 +1134,61 @@ function buildReflectionReportHtml(rsData, roadmapData) {
   return finalHtml;
 }
 
-const ADMIN_LOG_WEB_APP_URL = "TEMPEL_URL_WEB_APP_ADMIN_DISINI";
+const ADMIN_LOG_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbxhwICvxrcL5bKEaz9KS9BU7pr6yr9hIW2Bp34TBb0NCnlJME32YyMh1JLCRqYT9uSvQQ/exec";
 
-function buildCoverPageHtml(name, institusi, email, dateFormatted) {
+function buildCoverSection(name, institusi, email, dateFormatted) {
   return `
-<div style="height:174mm; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; font-family:'Manrope',sans-serif; padding:0 20mm;">
+<div style="min-height:250mm; display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; font-family:'Manrope',sans-serif; padding:20mm;">
   <div style="font-family:'Sora',sans-serif; font-size:12px; letter-spacing:3px; text-transform:uppercase; color:#B58C5D; font-weight:700; margin-bottom:18px;">Pilar Asa Cendekia</div>
-  <div style="font-family:'Sora',sans-serif; font-size:38px; font-weight:700; color:#152B3E; line-height:1.2;">Career Report</div>
-  <div style="font-size:15px; color:#7D7869; margin-top:10px;">Reflection Report &middot; Ringkasan Assessment &middot; My START Career Roadmap</div>
-  <div style="margin-top:60px; background:#F8F6F0; border-radius:14px; padding:28px 40px; min-width:320px;">
-    <div style="text-align:left; display:grid; grid-template-columns:auto 1fr; gap:8px 18px; font-size:14px;">
+  <div style="font-family:'Sora',sans-serif; font-size:34px; font-weight:700; color:#152B3E; line-height:1.2;">Career Report</div>
+  <div style="font-size:14px; color:#7D7869; margin-top:10px;">Reflection Report &middot; Ringkasan Assessment &middot; My START Career Roadmap</div>
+  <div style="margin-top:50px; background:#F8F6F0; border-radius:14px; padding:26px 36px; min-width:300px;">
+    <div style="text-align:left; display:grid; grid-template-columns:auto 1fr; gap:8px 18px; font-size:13.5px;">
       <div style="color:#9A9585; font-weight:600;">Nama</div><div style="font-weight:700; color:#152B3E;">${escapeHtml(name)}</div>
       <div style="color:#9A9585; font-weight:600;">Instansi</div><div>${escapeHtml(institusi || '—')}</div>
       <div style="color:#9A9585; font-weight:600;">Email</div><div>${escapeHtml(email)}</div>
       <div style="color:#9A9585; font-weight:600;">Tanggal</div><div>${escapeHtml(dateFormatted)}</div>
     </div>
   </div>
-  <div style="margin-top:50px; font-size:11px; color:#B5B0A2;">Dokumen ini bersifat rahasia — untuk keperluan pengembangan pribadi dan coaching.</div>
+  <div style="margin-top:40px; font-size:10.5px; color:#B5B0A2;">Dokumen ini bersifat rahasia — untuk keperluan pengembangan pribadi dan coaching.</div>
 </div>`;
 }
 
-function buildAssessmentSummaryHtml(record) {
+function buildReflectionSection(rsData, name, institusi, email, dateFormatted) {
+  const catatanHtml = (rsData.catatan_khusus && rsData.catatan_khusus.length)
+    ? rsData.catatan_khusus.map(item => `<li style="margin-bottom:7px;">${escapeHtml(item)}</li>`).join('')
+    : '<li style="list-style:none; color:#9A9585; font-style:italic;">Tidak ada ketidaksesuaian atau hal khusus yang perlu ditandai dari sesi ini.</li>';
+
+  return `
+<div style="font-family:'Manrope',sans-serif; padding:6mm 4mm;">
+  <div style="border-bottom:2px solid #152B3E; padding-bottom:14px; margin-bottom:18px;">
+    <div style="font-family:'Sora',sans-serif; font-size:22px; font-weight:700; color:#152B3E;">Career Reflection Report</div>
+    <div style="display:flex; flex-wrap:wrap; gap:8px 20px; margin-top:14px; font-size:12.5px;">
+      <div style="width:calc(50% - 10px);"><div style="font-size:9.5px; text-transform:uppercase; letter-spacing:0.4px; color:#9A9585; font-weight:700;">Nama Lengkap</div><div style="font-weight:600;">${escapeHtml(name)}</div></div>
+      <div style="width:calc(50% - 10px);"><div style="font-size:9.5px; text-transform:uppercase; letter-spacing:0.4px; color:#9A9585; font-weight:700;">Instansi</div><div>${escapeHtml(institusi || '—')}</div></div>
+      <div style="width:calc(50% - 10px);"><div style="font-size:9.5px; text-transform:uppercase; letter-spacing:0.4px; color:#9A9585; font-weight:700;">Email</div><div>${escapeHtml(email)}</div></div>
+      <div style="width:calc(50% - 10px);"><div style="font-size:9.5px; text-transform:uppercase; letter-spacing:0.4px; color:#9A9585; font-weight:700;">Tanggal</div><div>${escapeHtml(dateFormatted)}</div></div>
+    </div>
+  </div>
+
+  <div style="font-family:Georgia,'Times New Roman',serif; font-size:13.5px; line-height:1.75; color:#2B2A26;">
+    <p style="margin-bottom:14px; text-align:justify;">${escapeHtml(rsData.paragraf_1 || '')}</p>
+    <p style="margin-bottom:14px; text-align:justify;">${escapeHtml(rsData.paragraf_2 || '')}</p>
+    <p style="margin-bottom:14px; text-align:justify;">${escapeHtml(rsData.paragraf_3 || '')}</p>
+  </div>
+
+  <div style="background:#FAECE7; border-left:4px solid #9C4B3A; border-radius:8px; padding:14px 18px; margin:20px 0;">
+    <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:11.5px; color:#9C4B3A; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:8px;">Catatan Khusus — Layak Didiskusikan Lebih Lanjut Bersama Career Coach</div>
+    <ul style="margin:0; padding-left:16px; font-size:12px; line-height:1.55; color:#7A382A;">${catatanHtml}</ul>
+  </div>
+
+  <div style="font-style:italic; font-size:11px; color:#8A8577; border-top:1px solid #EAE6DA; padding-top:12px; margin-top:16px; line-height:1.5;">
+    Disclaimer: Laporan ini bersifat deskriptif dan reflektif, bukan penilaian mutlak. Interpretasi terbaik akan muncul melalui proses coaching dan pengalaman nyata di lapangan.
+  </div>
+</div>`;
+}
+
+function buildAssessmentSummarySection(record) {
   const raw = record && record._raw ? record._raw : {};
   const strength = raw.strength;
   const disc = raw.disc;
@@ -1147,57 +1196,112 @@ function buildAssessmentSummaryHtml(record) {
 
   function zoneBlock(title, items, color) {
     const list = (items && items.length) ? items.map(i => `<li style="margin-bottom:3px;">${escapeHtml(i)}</li>`).join('') : '<li style="color:#B5B0A2; list-style:none;">(belum diisi)</li>';
-    return `<div style="background:#fff; border-left:3px solid ${color}; border-radius:6px; padding:12px 16px; margin-bottom:10px;">
-      <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:12.5px; color:${color}; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">${title}</div>
-      <ul style="margin:0; padding-left:16px; font-size:13px; line-height:1.5;">${list}</ul>
+    return `<div style="width:calc(50% - 5px); background:#fff; border-left:3px solid ${color}; border-radius:6px; padding:12px 16px; margin-bottom:10px;">
+      <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:11.5px; color:${color}; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px;">${title}</div>
+      <ul style="margin:0; padding-left:16px; font-size:12px; line-height:1.5;">${list}</ul>
     </div>`;
   }
 
   const strengthSection = strength ? `
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <div style="display:flex; flex-wrap:wrap; gap:10px;">
       ${zoneBlock('Strength Zone', strength.strengthSkills, '#3F6B4C')}
       ${zoneBlock('Growth Zone', strength.growthSkills, '#C9971F')}
       ${zoneBlock('Responsibility Zone', strength.responsibilitySkills, '#33587E')}
       ${zoneBlock('Drain Zone', strength.drainSkills, '#B7412F')}
-    </div>` : '<div style="color:#B5B0A2; font-size:13px;">Data Strength Zone tidak tersedia.</div>';
+    </div>` : '<div style="color:#B5B0A2; font-size:12.5px;">Data Strength Zone tidak tersedia.</div>';
 
   const valueSection = value ? `
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+    <div style="display:flex; flex-wrap:wrap; gap:10px;">
       ${zoneBlock('Core Values', value.coreValues, '#152B3E')}
       ${zoneBlock('Guiding Values', value.guidingValues, '#8A6534')}
-    </div>` : '<div style="color:#B5B0A2; font-size:13px;">Data Values tidak tersedia.</div>';
+    </div>` : '<div style="color:#B5B0A2; font-size:12.5px;">Data Values tidak tersedia.</div>';
 
   const discSection = disc ? `
-    <div style="display:flex; gap:14px; margin-bottom:6px;">
-      ${['D','I','S','C'].map(k => `<div style="flex:1; background:#fff; border-radius:8px; padding:14px; text-align:center;">
-        <div style="font-family:'Sora',sans-serif; font-size:22px; font-weight:700; color:#152B3E;">${escapeHtml(String(disc['skor'+k]))}</div>
-        <div style="font-size:11px; color:#9A9585; font-weight:600; margin-top:2px;">${k}</div>
+    <div style="display:flex; gap:12px; margin-bottom:6px;">
+      ${['D','I','S','C'].map(k => `<div style="flex:1; background:#fff; border-radius:8px; padding:12px; text-align:center; border:1px solid #EAE6DA;">
+        <div style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; color:#152B3E;">${escapeHtml(String(disc['skor'+k]))}</div>
+        <div style="font-size:10px; color:#9A9585; font-weight:600; margin-top:2px;">${k}</div>
       </div>`).join('')}
     </div>
-    <div style="font-size:13.5px; color:#262524;">Gaya dominan: <strong>${escapeHtml(disc.gayaDominan || '')}</strong></div>` :
-    '<div style="color:#B5B0A2; font-size:13px;">Data DISC tidak tersedia.</div>';
+    <div style="font-size:12.5px; color:#262524;">Gaya dominan: <strong>${escapeHtml(disc.gayaDominan || '')}</strong></div>` :
+    '<div style="color:#B5B0A2; font-size:12.5px;">Data DISC tidak tersedia.</div>';
 
   return `
-<div style="min-height:174mm; font-family:'Manrope',sans-serif; padding:10mm 0;">
-  <div style="font-family:'Sora',sans-serif; font-size:24px; font-weight:700; color:#152B3E; margin-bottom:4px;">Ringkasan Assessment</div>
-  <div style="font-size:13px; color:#7D7869; margin-bottom:20px;">Strength Zone &middot; Values &middot; DISC</div>
+<div style="font-family:'Manrope',sans-serif; padding:6mm 4mm;">
+  <div style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; color:#152B3E; margin-bottom:3px;">Ringkasan Assessment</div>
+  <div style="font-size:12px; color:#7D7869; margin-bottom:18px;">Strength Zone &middot; Values &middot; DISC</div>
 
-  <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:13px; color:#152B3E; margin-bottom:8px;">STRENGTH ZONE</div>
+  <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:12px; color:#152B3E; margin-bottom:8px;">STRENGTH ZONE</div>
   ${strengthSection}
 
-  <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:13px; color:#152B3E; margin:18px 0 8px;">VALUES</div>
+  <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:12px; color:#152B3E; margin:16px 0 8px;">VALUES</div>
   ${valueSection}
 
-  <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:13px; color:#152B3E; margin:18px 0 8px;">DISC</div>
+  <div style="font-family:'Sora',sans-serif; font-weight:700; font-size:12px; color:#152B3E; margin:16px 0 8px;">DISC</div>
   ${discSection}
 </div>`;
 }
 
-function buildReportToolbarHtml() {
+function buildRoadmapPortraitSection(data) {
+  const sections = [
+    { letter: 'S', rest: 'ELF', title: 'Mengenal Diri', color: '#152B3E', fields: [
+      ['3 Kekuatan Utama Saya', valueToDisplay(data.self && data.self.kekuatan_utama ? data.self.kekuatan_utama.value : [])],
+      ['Nilai Hidup yang Saya Pegang', (data.self && data.self.nilai_hidup ? escapeHtml(data.self.nilai_hidup.value).replace(/CORE:(.*?)\|/i, '<strong>Core:</strong>$1<br>').replace(/GUIDING:/i, '<strong>Guiding:</strong>') : '')],
+      ['Kepribadian Saya', (data.self && data.self.kepribadian_disc ? escapeHtml(data.self.kepribadian_disc.value) : '')]
+    ]},
+    { letter: 'T', rest: 'ARGET', title: 'Arah Karier', color: '#8A6534', fields: [
+      ['Bidang/Karier yang Saya Tertarik', valueToDisplay(data.target && data.target.bidang_karier ? data.target.bidang_karier.value : '')],
+      ['Alasan Saya Tertarik', valueToDisplay(data.target && data.target.alasan_tertarik ? data.target.alasan_tertarik.value : '')],
+      ['Karir Impian Saya dalam 5 Tahun', valueToDisplay(data.target && data.target.karir_impian_5tahun ? data.target.karir_impian_5tahun.value : '')],
+      ['Target Karier 1 Tahun ke Depan', valueToDisplay(data.target && data.target.target_1tahun ? data.target.target_1tahun.value : '')]
+    ]},
+    { letter: 'A', rest: 'CQUIRE', title: 'Membekali Diri', color: '#3C5B4E', fields: [
+      ['Skill yang Harus Saya Pelajari', valueToDisplay(data.acquire && data.acquire.skill_dipelajari ? data.acquire.skill_dipelajari.value : [])],
+      ['Rencana Belajar (apa, kapan, bagaimana)', valueToDisplay(data.acquire && data.acquire.rencana_belajar ? data.acquire.rencana_belajar.value : '')],
+      ['Sertifikasi/Kompetensi yang Ingin Saya Capai', valueToDisplay(data.acquire && data.acquire.sertifikasi ? data.acquire.sertifikasi.value : [])]
+    ]},
+    { letter: 'R', rest: 'EFLECT', title: 'Merefleksikan', color: '#5A4A78', fields: [
+      ['Apa yang Sudah Saya Coba Sejauh Ini?', valueToDisplay(data.reflect && data.reflect.pengalaman_dicoba ? data.reflect.pengalaman_dicoba.value : '')],
+      ['Hal yang Saya Pelajari dari Pengalaman Itu', valueToDisplay(data.reflect && data.reflect.pelajaran ? data.reflect.pelajaran.value : '')],
+      ['Apa yang Perlu Saya Perbaiki/Perbarui?', valueToDisplay(data.reflect && data.reflect.area_perbaikan ? data.reflect.area_perbaikan.value : '')]
+    ]},
+    { letter: 'T', rest: 'HRIVE', title: 'Berkembang', color: '#9C4B3A', fields: [
+      ['Channel Personal Branding Saya', buildChannelHtml(data.thrive && data.thrive.channel ? data.thrive.channel.value : [])],
+      ['Mentor/Coach yang Ingin Saya Ajukan', valueToDisplay(data.thrive && data.thrive.mentor_dicari ? data.thrive.mentor_dicari.value : [])],
+      ['Dukungan yang Saya Butuhkan', valueToDisplay(data.thrive && data.thrive.dukungan_dibutuhkan ? data.thrive.dukungan_dibutuhkan.value : '')],
+      ['Indikator Saya Sudah "Naik Level" (definisi sukses pribadi)', valueToDisplay(data.thrive && data.thrive.indikator_naik_level ? data.thrive.indikator_naik_level.value : '')]
+    ]}
+  ];
+
+  const sectionsHtml = sections.map(s => `
+    <div style="margin-bottom:14px; border:1px solid #EAE6DA; border-radius:10px; overflow:hidden;">
+      <div style="background:${s.color}; color:#fff; padding:8px 14px; display:flex; align-items:baseline; gap:2px; font-family:'Sora',sans-serif;">
+        <span style="font-size:16px; font-weight:700;">${s.letter}</span><span style="font-size:11px; font-weight:700; letter-spacing:0.5px;">${s.rest}</span>
+        <span style="margin-left:8px; font-size:10.5px; font-weight:400; opacity:0.85;">— ${s.title}</span>
+      </div>
+      <div style="padding:12px 14px; background:#FBF8F0;">
+        ${s.fields.map(([label, value]) => `
+          <div style="border-left:2.5px solid ${s.color}; padding:5px 0 5px 10px; margin-bottom:8px;">
+            <div style="font-size:9.5px; text-transform:uppercase; letter-spacing:0.4px; color:#7D7869; font-weight:700; margin-bottom:2px;">${escapeHtml(label)}</div>
+            <div style="font-size:12px; line-height:1.45; color:#262524;">${value || '<span style="color:#B5B0A2;">(belum diisi)</span>'}</div>
+          </div>`).join('')}
+      </div>
+    </div>`).join('');
+
+  return `
+<div style="font-family:'Manrope',sans-serif; padding:6mm 4mm;">
+  <div style="font-family:'Sora',sans-serif; font-size:20px; font-weight:700; color:#152B3E; margin-bottom:4px;">My <span style="color:#B58C5D;">START</span> Career Roadmap</div>
+  <div style="font-size:12px; color:#7D7869; margin-bottom:18px;">Peta Pengembangan Karier Individu &middot; Program Coaching Pilar Asa Cendekia</div>
+  ${sectionsHtml}
+</div>`;
+}
+
+function buildReportToolbarHtml(indexUrl) {
   return `
 <div id="cendo-report-toolbar" style="position:fixed; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:10px; background:white; padding:10px 14px; border-radius:14px; box-shadow:0 4px 18px rgba(0,0,0,0.15); z-index:999; font-family:'Manrope',sans-serif;">
+  <a href="${escapeHtml(indexUrl)}" style="display:inline-flex; align-items:center; background:none; border:1px solid #152B3E; color:#152B3E; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; text-decoration:none; font-family:inherit;">← Kembali ke Beranda</a>
   <button onclick="window.print()" style="background:#fff; border:1px solid #152B3E; color:#152B3E; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">🖨️ Cetak / Simpan PDF</button>
-  <button id="cendo-admin-log-btn" style="background:#152B3E; border:none; color:#fff; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">📧 Kirim &amp; Simpan ke Database Admin</button>
+  <button id="cendo-admin-log-btn" style="background:#152B3E; border:none; color:#fff; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">📧 Kirim ke Email Saya</button>
   <span id="cendo-report-status" style="align-self:center; font-size:12px; color:#6B6960;"></span>
 </div>
 <script>
@@ -1220,7 +1324,7 @@ function buildReportToolbarHtml() {
       });
       var result = await resp.json().catch(function(){ return {result:'unknown'}; });
       if (result.result === 'success') {
-        statusEl.textContent = '✓ Terkirim & tercatat di database admin.';
+        statusEl.textContent = '✓ Terkirim ke email kamu & tercatat di database admin.';
       } else {
         statusEl.textContent = 'Gagal: ' + (result.message || 'terjadi kesalahan di server.');
       }
@@ -1241,38 +1345,49 @@ function buildReportToolbarHtml() {
 ` + '<' + '/script>';
 }
 
-function buildFullCareerReportHtml(coverHtml, reflectionHtml, summaryHtml, roadmapHtml, reportPayload) {
-  function extractBody(html) {
-    const m = html.match(/<body[^>]*>([\s\S]*)<\/body>/i);
-    return m ? m[1] : html;
-  }
-  function extractHead(html) {
-    const m = html.match(/<head[^>]*>([\s\S]*)<\/head>/i);
-    return m ? m[1] : '';
-  }
-  const combined = `<!DOCTYPE html>
+function buildFullCareerReportHtml(name, institusi, email, dateFormatted, rsData, matchedRecordData, roadmapData, reportPayload) {
+  const manropeB64 = extractFontBase64(b64ToUtf8(REFLECTION_REPORT_TEMPLATE_B64), 'Manrope');
+  const soraB64 = extractFontBase64(b64ToUtf8(REFLECTION_REPORT_TEMPLATE_B64), 'Sora');
+  const baseUrl = window.location.href.replace(/[^/]*$/, '');
+  const indexUrl = baseUrl + 'index.html';
+
+  const coverHtml = buildCoverSection(name, institusi, email, dateFormatted);
+  const reflectionHtml = buildReflectionSection(rsData, name, institusi, email, dateFormatted);
+  const summaryHtml = buildAssessmentSummarySection(matchedRecordData);
+  const roadmapHtml = buildRoadmapPortraitSection(roadmapData);
+  const pdfTitle = 'Report - ' + name;
+
+  return `<!DOCTYPE html>
 <html lang="id">
 <head>
 <meta charset="UTF-8">
-<title>Career Report</title>
-${extractHead(reflectionHtml)}
-${extractHead(roadmapHtml)}
+<title>${escapeHtml(pdfTitle)}</title>
 <style>
-  @media print { .cendo-page-break { page-break-after: always; } }
-  .cendo-page-break { border-bottom: 2px dashed #ddd; margin-bottom: 12px; }
-  body { padding-bottom: 70px; }
+@font-face { font-family:'Manrope'; src:url("data:font/ttf;base64,${manropeB64}") format('truetype'); font-weight:200 800; }
+@font-face { font-family:'Sora'; src:url("data:font/ttf;base64,${soraB64}") format('truetype'); font-weight:100 800; }
+* { box-sizing:border-box; }
+@page { size: A4 portrait; margin: 15mm; }
+html, body { margin:0; padding:0; background:#FFFDF9; color:#262524; }
+.cendo-page-break { page-break-after: always; }
+@media print { body { padding-bottom:0 !important; } #cendo-report-toolbar { display:none !important; } }
+body { padding-bottom:70px; }
 </style>
 </head>
 <body>
 <script>window.__cendoReportPayload = ${JSON.stringify(reportPayload)};` + '<' + '/script>' + `
 <div class="cendo-page-break">${coverHtml}</div>
-<div class="cendo-page-break">${extractBody(reflectionHtml)}</div>
+<div class="cendo-page-break">${reflectionHtml}</div>
 <div class="cendo-page-break">${summaryHtml}</div>
-${extractBody(roadmapHtml)}
-${buildReportToolbarHtml()}
+<div>${roadmapHtml}</div>
+${buildReportToolbarHtml(indexUrl)}
 </body>
 </html>`;
-  return combined;
+}
+
+function extractFontBase64(html, family) {
+  const re = new RegExp("font-family:\\s*'" + family + "'[\\s\\S]*?base64,([^\"]+)\"", 'i');
+  const m = html.match(re);
+  return m ? m[1] : '';
 }
 
 async function handleRoadmapSubmitted() {
@@ -1287,17 +1402,12 @@ async function handleRoadmapSubmitted() {
   try {
     if (!lastRoadmapData) throw new Error('Roadmap belum tersedia');
     const rsData = await generateReflectionReportData(lastRoadmapData);
-    const reflectionHtml = buildReflectionReportHtml(rsData, lastRoadmapData);
-    const roadmapHtml = buildRoadmapHtml(lastRoadmapData);
 
     const name = document.getElementById('setupName').value.trim() || 'Coachee';
     const email = document.getElementById('setupEmail').value.trim();
     const institusi = document.getElementById('setupInstitusi').value.trim() || 'Pilar Asa Cendekia';
     const dateRaw = document.getElementById('setupDate').value || '';
     const dateFormatted = dateRaw ? new Date(dateRaw).toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' }) : '(belum diisi)';
-
-    const coverHtml = buildCoverPageHtml(name, institusi, email, dateFormatted);
-    const summaryHtml = buildAssessmentSummaryHtml(matchedRecord);
 
     const reportPayload = {
       nama: name, email: email, instansi: institusi, tanggal: dateFormatted,
@@ -1306,7 +1416,7 @@ async function handleRoadmapSubmitted() {
       sumberSesi: 'ASA Career Report'
     };
 
-    const fullReportHtml = buildFullCareerReportHtml(coverHtml, reflectionHtml, summaryHtml, roadmapHtml, reportPayload);
+    const fullReportHtml = buildFullCareerReportHtml(name, institusi, email, dateFormatted, rsData, matchedRecord, lastRoadmapData, reportPayload);
 
     note.style.fontStyle = 'normal';
     note.textContent = '';
@@ -1324,7 +1434,31 @@ async function handleRoadmapSubmitted() {
   }
 
   document.getElementById('roadmapBar').style.display = 'none';
+  disablePostSessionButtons();
+  addBackToHomeButton();
   triggerClosingMessage();
+}
+
+function disablePostSessionButtons() {
+  const submitConfirmBtns = document.querySelectorAll('.confirm-submit-btn');
+  submitConfirmBtns.forEach(b => { b.disabled = true; b.style.opacity = '0.5'; b.style.cursor = 'not-allowed'; });
+  const genBtn = document.getElementById('genRoadmapBtn');
+  if (genBtn) { genBtn.disabled = true; genBtn.style.opacity = '0.5'; genBtn.style.cursor = 'not-allowed'; }
+}
+
+function addBackToHomeButton() {
+  if (document.getElementById('backToHomeBtn')) return;
+  const thread = document.getElementById('thread');
+  const wrap = document.createElement('div');
+  wrap.style.cssText = 'display:flex; justify-content:center; margin:14px 0;';
+  const btn = document.createElement('a');
+  btn.id = 'backToHomeBtn';
+  btn.href = 'index.html';
+  btn.textContent = '← Kembali ke Beranda';
+  btn.style.cssText = 'display:inline-block; background:var(--ink); color:#fff; padding:10px 20px; border-radius:8px; font-weight:600; font-size:13px; text-decoration:none; font-family:Inter,sans-serif;';
+  wrap.appendChild(btn);
+  thread.appendChild(wrap);
+  thread.scrollTop = thread.scrollHeight;
 }
 
 function collectRoadmapData() {
