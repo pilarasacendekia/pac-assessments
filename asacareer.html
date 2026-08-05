@@ -1503,6 +1503,76 @@ function buildReportToolbarHtml(indexUrl) {
     return merged;
   }
 
+  function loadScript(src) {
+    return new Promise(function(resolve, reject) {
+      var s = document.createElement('script');
+      s.src = src;
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
+  }
+
+  async function generateReportPdfBase64() {
+    if (!window.html2canvas) await loadScript('https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.11/dist/html2canvas-pro.js');
+    if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+    const pageW = 210, pageH = 297;
+    let pageCount = 0;
+
+    async function addPortraitSection(selector) {
+      const el = document.querySelector(selector);
+      if (!el || el.offsetHeight === 0) return;
+      const canvas = await html2canvas(el, { scale: 1.6, useCORS: true, backgroundColor: '#FFFDF9' });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if (pageCount > 0) doc.addPage('a4', 'portrait');
+      const imgH = Math.min((canvas.height * pageW) / canvas.width, pageH);
+      doc.addImage(imgData, 'JPEG', 0, 0, pageW, imgH);
+      pageCount++;
+    }
+
+    async function addRoadmapLandscapeSection() {
+      const frame = document.getElementById('roadmap-iframe');
+      const body = frame && frame.contentDocument ? frame.contentDocument.body : null;
+      if (!body) return;
+      const canvas = await html2canvas(body, { scale: 1.4, useCORS: true, backgroundColor: '#FEFBF3' });
+      const imgData = canvas.toDataURL('image/jpeg', 0.92);
+      if (pageCount > 0) doc.addPage('a4', 'landscape');
+      const lw = 297, lh = 210;
+      const imgH = Math.min((canvas.height * lw) / canvas.width, lh);
+      doc.addImage(imgData, 'JPEG', 0, 0, lw, imgH);
+      pageCount++;
+    }
+
+    await addPortraitSection('#report-cover');
+    await addPortraitSection('#report-reflection');
+    await addPortraitSection('#pdf-embed-disc');
+    await addPortraitSection('#pdf-embed-strength');
+    await addPortraitSection('#pdf-embed-value');
+    await addPortraitSection('#report-assessment-fallback');
+    await addRoadmapLandscapeSection();
+    await addPortraitSection('#report-backcover');
+
+    return doc.output('datauristring').split(',')[1]; // base64 saja, tanpa prefix data:
+  }
+
+  async function generateRoadmapPdfBase64() {
+    if (!window.html2canvas) await loadScript('https://cdn.jsdelivr.net/npm/html2canvas-pro@1.5.11/dist/html2canvas-pro.js');
+    if (!window.jspdf) await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+    const { jsPDF } = window.jspdf;
+    const frame = document.getElementById('roadmap-iframe');
+    const body = frame && frame.contentDocument ? frame.contentDocument.body : null;
+    if (!body) return null;
+    const canvas = await html2canvas(body, { scale: 1.8, useCORS: true, backgroundColor: '#FEFBF3' });
+    const imgData = canvas.toDataURL('image/jpeg', 0.95);
+    const doc = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'landscape' });
+    const lw = 297, lh = 210;
+    const imgH = Math.min((canvas.height * lw) / canvas.width, lh);
+    doc.addImage(imgData, 'JPEG', 0, 0, lw, imgH);
+    return doc.output('datauristring').split(',')[1];
+  }
+
   document.getElementById('cendo-admin-log-btn').addEventListener('click', async function() {
     var statusEl = document.getElementById('cendo-report-status');
     if (ADMIN_URL.includes('TEMPEL_URL_WEB_APP')) {
@@ -1511,7 +1581,7 @@ function buildReportToolbarHtml(indexUrl) {
     }
     var btn = this;
     btn.disabled = true;
-    statusEl.textContent = 'Mengirim...';
+    statusEl.textContent = 'Menyusun PDF Career Report...';
     try {
       var payload = window.__cendoReportPayload || {};
       var edits = collectRoadmapEdits();
@@ -1519,6 +1589,16 @@ function buildReportToolbarHtml(indexUrl) {
         payload = JSON.parse(JSON.stringify(payload));
         payload.ringkasanRoadmap = mergeEditsIntoRoadmap(payload.ringkasanRoadmap, edits);
       }
+      var pdfWarning = '';
+      try {
+        payload.reportPdfBase64 = await generateReportPdfBase64();
+        statusEl.textContent = 'Menyusun PDF Career Roadmap...';
+        payload.roadmapPdfBase64 = await generateRoadmapPdfBase64();
+      } catch (pdfErr) {
+        console.error('Gagal membuat PDF:', pdfErr);
+        pdfWarning = ' (⚠ lampiran PDF gagal dibuat: ' + (pdfErr && pdfErr.message ? pdfErr.message : pdfErr) + ' — lihat console browser untuk detail)';
+      }
+      statusEl.textContent = 'Mengirim...';
       var resp = await fetch(ADMIN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
@@ -1526,7 +1606,7 @@ function buildReportToolbarHtml(indexUrl) {
       });
       var result = await resp.json().catch(function(){ return {result:'unknown'}; });
       if (result.result === 'success') {
-        statusEl.textContent = '✓ Terkirim ke email kamu & tercatat di database admin.';
+        statusEl.textContent = '✓ Terkirim ke email kamu.' + pdfWarning;
       } else {
         statusEl.textContent = 'Gagal: ' + (result.message || 'terjadi kesalahan di server.');
       }
@@ -1588,7 +1668,7 @@ function buildFullCareerReportHtml(name, institusi, email, dateFormatted, rsData
 
   const assessmentSectionHtml = hasAllOriginalPdfs
     ? '<div id="pdf-embed-disc" class="cendo-page-break"></div><div id="pdf-embed-strength" class="cendo-page-break"></div><div id="pdf-embed-value" class="cendo-page-break"></div>'
-    : '<div class="cendo-page-break">' + buildAssessmentSummarySection(matchedRecordData) + '</div>';
+    : '<div id="report-assessment-fallback" class="cendo-page-break">' + buildAssessmentSummarySection(matchedRecordData) + '</div>';
 
   const pdfEmbedScript = hasAllOriginalPdfs ? (
     '<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"><' + '/script>\n' +
@@ -1699,8 +1779,8 @@ body { padding-bottom:70px; }
 </head>
 <body>
 <script>window.__cendoReportPayload = ${JSON.stringify(reportPayload)};` + '<' + '/script>' + `
-<div class="cendo-page-break">${coverHtml}</div>
-<div class="cendo-page-break">${reflectionHtml}</div>
+<div id="report-cover" class="cendo-page-break">${coverHtml}</div>
+<div id="report-reflection" class="cendo-page-break">${reflectionHtml}</div>
 ${assessmentSectionHtml}
 <div class="cendo-page-break">
   <div class="roadmap-embed-outer">
@@ -1709,7 +1789,7 @@ ${assessmentSectionHtml}
     </div>
   </div>
 </div>
-<div>${backCoverHtml}</div>
+<div id="report-backcover">${backCoverHtml}</div>
 ${pdfEmbedScript}
 ${roadmapEmbedScript}
 ${buildReportToolbarHtml(indexUrl)}
@@ -1724,6 +1804,9 @@ function extractFontBase64(html, family) {
 }
 
 async function handleRoadmapSubmitted() {
+  const genReportBtnEl = document.getElementById('genReportBtn');
+  if (genReportBtnEl) { genReportBtnEl.disabled = true; genReportBtnEl.style.opacity = '0.5'; genReportBtnEl.style.cursor = 'not-allowed'; }
+
   const thread = document.getElementById('thread');
   const note = document.createElement('div');
   note.className = 'msg system-note';
