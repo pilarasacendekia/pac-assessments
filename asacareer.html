@@ -1545,12 +1545,31 @@ function buildReportToolbarHtml(indexUrl) {
       pageCount++;
     }
 
+    // Halaman assessment (DISC/Strength/Value) sudah berupa gambar per-halaman asli (dari pdf.js) —
+    // pakai LANGSUNG satu-satu, jangan screenshot seluruh kontainer jadi satu gambar gepeng.
+    function addOriginalPdfImages(containerSelector) {
+      const container = document.querySelector(containerSelector);
+      if (!container) return;
+      const imgs = container.querySelectorAll('img');
+      imgs.forEach(function(img) {
+        if (!img.src) return;
+        if (pageCount > 0) doc.addPage('a4', 'portrait');
+        const imgH = Math.min((img.naturalHeight * pageW) / img.naturalWidth, pageH);
+        doc.addImage(img.src, 'PNG', 0, 0, pageW, imgH);
+        pageCount++;
+      });
+    }
+
     await addPortraitSection('#report-cover');
     await addPortraitSection('#report-reflection');
-    await addPortraitSection('#pdf-embed-disc');
-    await addPortraitSection('#pdf-embed-strength');
-    await addPortraitSection('#pdf-embed-value');
-    await addPortraitSection('#report-assessment-fallback');
+    const hasOriginalPdfPages = document.querySelector('#pdf-embed-disc img, #pdf-embed-strength img, #pdf-embed-value img');
+    if (hasOriginalPdfPages) {
+      addOriginalPdfImages('#pdf-embed-disc');
+      addOriginalPdfImages('#pdf-embed-strength');
+      addOriginalPdfImages('#pdf-embed-value');
+    } else {
+      await addPortraitSection('#report-assessment-fallback');
+    }
     await addRoadmapLandscapeSection();
     await addPortraitSection('#report-backcover');
 
