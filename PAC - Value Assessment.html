@@ -762,17 +762,10 @@ async function attemptShareResult(){
   statusEl.textContent = 'Mengirim hasil ke email Anda...';
 
   try{
-    const pdfBase64 = buildResultPdfBase64();
     const coreNos = alwaysPicks.slice(0,3);
-    const payload = {
-      nama: id.nama, instansi: id.instansi, usia: id.usia,
-      tanggal: id.tanggal, email: id.email,
-      coreValues: coreNos.map(no=>getValueByNo(no).value).join(', '),
-      guidingValues: oftenPicks.map(no=>getValueByNo(no).value).join(', '),
-      pdfBase64: pdfBase64
-    };
 
-    // Simpan hasil (tanpa PDF) ke localStorage bersama untuk langkah CENDO berikutnya
+    // Simpan hasil ke localStorage bersama SEGERA — sebelum proses PDF/kirim email,
+    // supaya progres tetap tersimpan walau proses berikutnya lambat atau gagal.
     try {
       const emailKey = (id.email || '').trim().toLowerCase();
       if (emailKey) {
@@ -784,6 +777,24 @@ async function attemptShareResult(){
         }));
       }
     } catch (e) { console.warn('Gagal menyimpan hasil Value ke localStorage', e); }
+
+    const pdfBase64 = buildResultPdfBase64();
+    const payload = {
+      nama: id.nama, instansi: id.instansi, usia: id.usia,
+      tanggal: id.tanggal, email: id.email,
+      coreValues: coreNos.map(no=>getValueByNo(no).value).join(', '),
+      guidingValues: oftenPicks.map(no=>getValueByNo(no).value).join(', '),
+      pdfBase64: pdfBase64
+    };
+
+    // Simpan PDF ASLI (persis yang dikirim ke email) ke localStorage terpisah — supaya nanti bisa
+    // disisipkan apa adanya ke Career Report gabungan, bukan dibuat ulang/didesain ulang.
+    try {
+      const emailKey2 = (id.email || '').trim().toLowerCase();
+      if (emailKey2) {
+        localStorage.setItem('pac_assess_value_pdf_' + emailKey2, pdfBase64);
+      }
+    } catch (e) { console.warn('Gagal menyimpan PDF Value ke localStorage', e); }
 
     try{
       const resp = await fetch(EMAIL_WEB_APP_URL, {

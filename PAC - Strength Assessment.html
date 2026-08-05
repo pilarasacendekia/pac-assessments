@@ -1027,16 +1027,9 @@ async function attemptShareResult() {
     statusEl.innerText = '';
 
     const zoneItems = getCurrentZoneItems();
-    const payload = {
-        email, nama, instansi, tanggal,
-        strengthSkills: zoneItems.strength.join(', '),
-        growthSkills: zoneItems.growth.join(', '),
-        responsibilitySkills: zoneItems.responsibility.join(', '),
-        drainSkills: zoneItems.drain.join(', '),
-        pdfBase64: buildResultPdfBase64()
-    };
 
-    // Simpan hasil (tanpa PDF) ke localStorage bersama untuk langkah CENDO berikutnya
+    // Simpan hasil (tanpa PDF) ke localStorage bersama SEGERA — sebelum proses PDF/kirim email,
+    // supaya progres tetap tersimpan walau proses berikutnya lambat atau gagal.
     try {
         const emailKey = (email || '').trim().toLowerCase();
         if (emailKey) {
@@ -1048,6 +1041,24 @@ async function attemptShareResult() {
             }));
         }
     } catch (e) { console.warn('Gagal menyimpan hasil Strength ke localStorage', e); }
+
+    const payload = {
+        email, nama, instansi, tanggal,
+        strengthSkills: zoneItems.strength.join(', '),
+        growthSkills: zoneItems.growth.join(', '),
+        responsibilitySkills: zoneItems.responsibility.join(', '),
+        drainSkills: zoneItems.drain.join(', '),
+        pdfBase64: buildResultPdfBase64()
+    };
+
+    // Simpan PDF ASLI (persis yang dikirim ke email) ke localStorage terpisah — supaya nanti bisa
+    // disisipkan apa adanya ke Career Report gabungan, bukan dibuat ulang/didesain ulang.
+    try {
+        const emailKey2 = (email || '').trim().toLowerCase();
+        if (emailKey2) {
+            localStorage.setItem('pac_assess_strength_pdf_' + emailKey2, payload.pdfBase64);
+        }
+    } catch (e) { console.warn('Gagal menyimpan PDF Strength ke localStorage', e); }
 
     try {
         // Coba kirim dengan mode normal dulu agar bisa membaca status sukses/gagal yang sebenarnya

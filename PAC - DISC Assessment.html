@@ -1012,16 +1012,8 @@ async function attemptShareResult(){
   const r = lastResult;
   const dominantLabel = r.dominant.map(t=>`${t} (${TRAIT_NAME[t]})`).join(' & ');
 
-  const payload = {
-    nama: idn.nama, instansi: idn.instansi, usia: idn.usia,
-    tanggal: formatTanggal(idn.tanggalRaw), email: idn.email,
-    skorD: r.seg3.D, skorI: r.seg3.I, skorS: r.seg3.S, skorC: r.seg3.C,
-    gayaDominan: dominantLabel,
-    pdfBase64: buildResultPdfBase64()
-  };
-
-  // Simpan hasil (tanpa PDF, supaya ringan) ke localStorage bersama supaya bisa langsung
-  // dibaca oleh langkah CENDO berikutnya dalam alur satu halaman — tanpa mengubah fitur kirim email di atas.
+  // Simpan hasil (tanpa PDF, supaya ringan) ke localStorage bersama SEGERA — sebelum proses PDF/kirim
+  // email, supaya progres tetap tersimpan walau proses berikutnya lambat atau gagal.
   try {
     const emailKey = (idn.email || '').trim().toLowerCase();
     if (emailKey) {
@@ -1032,6 +1024,23 @@ async function attemptShareResult(){
       }));
     }
   } catch (e) { console.warn('Gagal menyimpan hasil DISC ke localStorage', e); }
+
+  const payload = {
+    nama: idn.nama, instansi: idn.instansi, usia: idn.usia,
+    tanggal: formatTanggal(idn.tanggalRaw), email: idn.email,
+    skorD: r.seg3.D, skorI: r.seg3.I, skorS: r.seg3.S, skorC: r.seg3.C,
+    gayaDominan: dominantLabel,
+    pdfBase64: buildResultPdfBase64()
+  };
+
+  // Simpan PDF ASLI (persis yang dikirim ke email) ke localStorage terpisah — supaya nanti bisa
+  // disisipkan apa adanya ke Career Report gabungan, bukan dibuat ulang/didesain ulang.
+  try {
+    const emailKey2 = (idn.email || '').trim().toLowerCase();
+    if (emailKey2) {
+      localStorage.setItem('pac_assess_disc_pdf_' + emailKey2, payload.pdfBase64);
+    }
+  } catch (e) { console.warn('Gagal menyimpan PDF DISC ke localStorage', e); }
 
   try{
     const response = await fetch(EMAIL_WEB_APP_URL, {
