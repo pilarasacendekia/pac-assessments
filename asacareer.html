@@ -135,7 +135,7 @@
 
   <div class="thread" id="thread" style="display:none;"></div>
   <div class="roadmap-bar" id="roadmapBar" style="display:none;">
-    <button class="genBtn" id="genRoadmapBtn" onclick="generateRoadmapFromChat()">Buat draf roadmap dari percakapan ini</button>
+    <button class="genBtn" id="genRoadmapBtn" onclick="generateFullReportFromChat()">Tampilkan Career Report dan Reflection</button>
     <span class="status" id="genStatus" style="font-size:12px; color:var(--ink-soft); font-style:italic;"></span>
   </div>
   <div class="composer" id="composer" style="display:none;">
@@ -345,6 +345,29 @@ let lastRoadmapData = null;
 const CENDO_PROXY_URL = "https://script.google.com/macros/s/AKfycby6aMPmYPpzxZFoAuWu5-PvwPSPn6LHyUziKtmwAbNy2XwWWinRapL-Jji-jniL1zr4xQ/exec";
 
 const SESSION_KEY = 'cendo_session_v1';
+
+// Dipanggil dari tab Career Report (lewat window.opener) saat coachee kembali ke ASA setelah
+// mengedit field roadmap langsung di dalam laporan — supaya editnya tidak hilang begitu saja.
+const ROADMAP_FIELD_CATEGORY_MAP = {
+  alasan_tertarik: 'target', bidang_karier: 'target', karir_impian_5tahun: 'target', target_1tahun: 'target',
+  skill_dipelajari: 'acquire', rencana_belajar: 'acquire', sertifikasi: 'acquire',
+  pengalaman_dicoba: 'reflect', pelajaran: 'reflect', area_perbaikan: 'reflect',
+  channel: 'thrive', mentor_dicari: 'thrive', dukungan_dibutuhkan: 'thrive', indikator_naik_level: 'thrive'
+};
+function receiveRoadmapEdits(edits) {
+  try {
+    if (!lastRoadmapData || !edits) return;
+    Object.keys(edits).forEach(function(field) {
+      const cat = ROADMAP_FIELD_CATEGORY_MAP[field];
+      if (!cat) return;
+      if (!lastRoadmapData[cat]) lastRoadmapData[cat] = {};
+      if (!lastRoadmapData[cat][field]) lastRoadmapData[cat][field] = {};
+      lastRoadmapData[cat][field].value = edits[field];
+    });
+    saveSession();
+    console.log('Edit roadmap dari Career Report berhasil disinkronkan.');
+  } catch (e) { console.warn('Gagal menyinkronkan edit roadmap:', e); }
+}
 
 function saveSession() {
   try {
@@ -810,7 +833,8 @@ Kalau field kosong, tetap sertakan dengan value "" atau [] dan source_label "kos
 const REPORT_SYNTHESIZER_PROMPT = `Anda adalah Report Synthesizer — peran AI ketiga (setelah ASA dan Career Analyst) yang menyatukan hasil assessment dan Career Roadmap final menjadi SATU NARASI REFLEKTIF yang mengalir, mengikuti pola "Career Reflection Report" Pilar Asa Cendekia.
 
 PRINSIP DASAR:
-- Anda menulis TENTANG coachee untuk dibaca coachee dan human coach — suara laporan profesional pihak ketiga ("Aldi menunjukkan..."), BUKAN sapaan langsung ("kamu").
+- Tulisan Anda dibaca LANGSUNG oleh coachee, jadi tulis dengan suara mentor/coach yang hangat dan personal — SEBUT NAMA coachee (dari field nama_coachee) secara natural di sepanjang narasi, terutama di kalimat pembuka tiap paragraf. JANGAN buka paragraf dengan menyebut kategori data mentah secara kaku (mis. "Nilai-nilai inti yang dipegang — Growth Opportunity, Contribution..."). Sebaliknya, mulai dari orangnya: "Ani, dari apa yang kamu bagikan selama sesi ini, terlihat jelas bahwa..." — baru sebutkan datanya secara mengalir di dalam kalimat.
+- Bahasa hangat dan membangun, seperti coach yang benar-benar mengenal orangnya — bukan laporan klinis pihak ketiga. Sapa dengan nama dan/atau "kamu", bukan "coachee" berulang-ulang sebagai kata benda.
 - JANGAN MENGARANG. Setiap klaim harus bisa ditelusuri balik ke data assessment atau roadmap yang diberikan.
 - HANYA gunakan kategori data yang benar-benar ada di input. Kalau suatu kategori (mis. Skala Sikap Disfungsional) tidak diberikan, JANGAN membahasnya sama sekali.
 - Gunakan bahasa probabilistik/deskriptif ("cenderung", "tampak") — bukan kepastian mutlak.
@@ -896,11 +920,11 @@ function renderRoadmapCanvas(data) {
   }
 }
 
-async function generateRoadmapFromChat() {
+async function generateFullReportFromChat() {
   const btn = document.getElementById('genRoadmapBtn');
   const status = document.getElementById('genStatus');
   btn.disabled = true;
-  status.textContent = 'Menyusun draf roadmap dari percakapan…';
+  status.textContent = 'Menyusun Career Report dan Reflection dari percakapan…';
 
   if (CENDO_PROXY_URL.includes('TEMPEL_URL')) {
     status.textContent = 'Belum bisa generate — proxy Apps Script belum dipasang admin.';
@@ -948,11 +972,11 @@ async function generateRoadmapFromChat() {
     }
     lastRoadmapData = parsed;
     saveSession();
-    openRoadmapInDesignTemplate(parsed);
+    status.textContent = '';
+    await handleRoadmapSubmitted();
   } catch (err) {
     console.error(err);
     status.textContent = 'Terjadi kesalahan. Coba lagi.';
-  } finally {
     btn.disabled = false;
   }
 }
@@ -1078,11 +1102,12 @@ function openRoadmapInDesignTemplate(data) {
 
 // ---- Report Synthesizer: menyusun Career Reflection Report ----
 
-async function generateReflectionReportData(roadmapData) {
+async function generateReflectionReportData(roadmapData, coacheeName) {
   if (CENDO_PROXY_URL.includes('TEMPEL_URL')) {
     throw new Error('Proxy Apps Script belum dipasang admin.');
   }
   const inputPayload = {
+    nama_coachee: coacheeName || 'Coachee',
     self: roadmapData.self,
     target: roadmapData.target,
     acquire: roadmapData.acquire,
@@ -1434,7 +1459,7 @@ function buildRoadmapPortraitSection(data) {
 function buildReportToolbarHtml(indexUrl) {
   return `
 <div id="cendo-report-toolbar" style="position:fixed; bottom:18px; left:50%; transform:translateX(-50%); display:flex; gap:10px; background:white; padding:10px 14px; border-radius:14px; box-shadow:0 4px 18px rgba(0,0,0,0.15); z-index:999; font-family:'Manrope',sans-serif;">
-  <a href="${escapeHtml(indexUrl)}" style="display:inline-flex; align-items:center; background:none; border:1px solid #152B3E; color:#152B3E; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; text-decoration:none; font-family:inherit;">← Kembali ke Beranda</a>
+  <a id="cendo-back-to-asa" href="${escapeHtml(indexUrl)}" style="display:inline-flex; align-items:center; background:none; border:1px solid #152B3E; color:#152B3E; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; text-decoration:none; font-family:inherit;">← Kembali ke ASA</a>
   <button onclick="window.print()" style="background:#fff; border:1px solid #152B3E; color:#152B3E; border-radius:8px; padding:9px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">🖨️ Cetak / Simpan PDF</button>
   <button id="cendo-admin-log-btn" style="background:#152B3E; border:none; color:#fff; border-radius:8px; padding:9px 18px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit;">📧 Kirim ke Email Saya</button>
   <span id="cendo-report-status" style="align-self:center; font-size:12px; color:#6B6960;"></span>
@@ -1442,6 +1467,42 @@ function buildReportToolbarHtml(indexUrl) {
 <script>
 (function() {
   var ADMIN_URL = ${JSON.stringify(ADMIN_LOG_WEB_APP_URL)};
+  var indexUrlFallback = ${JSON.stringify(indexUrl)};
+
+  // Peta field yang bisa diedit di dalam iframe roadmap -> kategori aslinya di struktur data.
+  // Dipakai supaya edit terakhir coachee ikut terbawa (bukan cuma draf asli dari ASA).
+  var FIELD_CATEGORY_MAP = {
+    alasan_tertarik: 'target', bidang_karier: 'target', karir_impian_5tahun: 'target', target_1tahun: 'target',
+    skill_dipelajari: 'acquire', rencana_belajar: 'acquire', sertifikasi: 'acquire',
+    pengalaman_dicoba: 'reflect', pelajaran: 'reflect', area_perbaikan: 'reflect',
+    channel: 'thrive', mentor_dicari: 'thrive', dukungan_dibutuhkan: 'thrive', indikator_naik_level: 'thrive'
+  };
+
+  function collectRoadmapEdits() {
+    var frame = document.getElementById('roadmap-iframe');
+    var edits = {};
+    try {
+      var doc = frame.contentDocument;
+      if (!doc) return edits;
+      doc.querySelectorAll('[data-field]').forEach(function(el) {
+        edits[el.getAttribute('data-field')] = el.innerText.trim();
+      });
+    } catch (e) { /* iframe belum siap / cross-origin — abaikan, pakai draf asli */ }
+    return edits;
+  }
+
+  function mergeEditsIntoRoadmap(roadmapData, edits) {
+    var merged = JSON.parse(JSON.stringify(roadmapData || {}));
+    Object.keys(edits).forEach(function(field) {
+      var cat = FIELD_CATEGORY_MAP[field];
+      if (!cat) return;
+      if (!merged[cat]) merged[cat] = {};
+      if (!merged[cat][field]) merged[cat][field] = {};
+      merged[cat][field].value = edits[field];
+    });
+    return merged;
+  }
+
   document.getElementById('cendo-admin-log-btn').addEventListener('click', async function() {
     var statusEl = document.getElementById('cendo-report-status');
     if (ADMIN_URL.includes('TEMPEL_URL_WEB_APP')) {
@@ -1452,10 +1513,16 @@ function buildReportToolbarHtml(indexUrl) {
     btn.disabled = true;
     statusEl.textContent = 'Mengirim...';
     try {
+      var payload = window.__cendoReportPayload || {};
+      var edits = collectRoadmapEdits();
+      if (Object.keys(edits).length) {
+        payload = JSON.parse(JSON.stringify(payload));
+        payload.ringkasanRoadmap = mergeEditsIntoRoadmap(payload.ringkasanRoadmap, edits);
+      }
       var resp = await fetch(ADMIN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-        body: JSON.stringify(window.__cendoReportPayload || {})
+        body: JSON.stringify(payload)
       });
       var result = await resp.json().catch(function(){ return {result:'unknown'}; });
       if (result.result === 'success') {
@@ -1474,6 +1541,25 @@ function buildReportToolbarHtml(indexUrl) {
       btn.disabled = false;
     }
   });
+
+  document.getElementById('cendo-back-to-asa').addEventListener('click', function(e) {
+    e.preventDefault();
+    var edits = collectRoadmapEdits();
+    // Kembali ke tab ASA asli yang masih hidup dengan konteks percakapan penuh, sambil membawa
+    // edit terakhir pada roadmap (kalau ada) supaya tidak hilang.
+    if (window.opener && !window.opener.closed) {
+      try {
+        if (Object.keys(edits).length && typeof window.opener.receiveRoadmapEdits === 'function') {
+          window.opener.receiveRoadmapEdits(edits);
+        }
+        window.opener.focus();
+        window.close();
+        return;
+      } catch (err) {}
+    }
+    window.location.href = indexUrlFallback;
+  });
+
   window.addEventListener('beforeprint', function() { document.getElementById('cendo-report-toolbar').style.display = 'none'; });
   window.addEventListener('afterprint', function() { document.getElementById('cendo-report-toolbar').style.display = 'flex'; });
 })();
@@ -1559,10 +1645,21 @@ window.addEventListener('DOMContentLoaded', async function() {
   const roadmapEmbedScript =
     '<script>window.__roadmapHtml = ' + safeScriptString(roadmapStandaloneHtml) + ';<' + '/script>\n' +
     '<script>\n' +
+    "function scaleRoadmapEmbed() {\n" +
+    "  const outer = document.querySelector('.roadmap-embed-outer');\n" +
+    "  const inner = document.querySelector('.roadmap-embed-inner');\n" +
+    "  if (!outer || !inner) return;\n" +
+    "  const scale = outer.offsetWidth / 1650;\n" +
+    "  inner.style.transform = 'scale(' + scale + ')';\n" +
+    "}\n" +
     "window.addEventListener('DOMContentLoaded', function() {\n" +
     "  const frame = document.getElementById('roadmap-iframe');\n" +
     '  if (frame) frame.srcdoc = window.__roadmapHtml;\n' +
-    '});\n' +
+    "  scaleRoadmapEmbed();\n" +
+    "});\n" +
+    "window.addEventListener('resize', scaleRoadmapEmbed);\n" +
+    "window.addEventListener('beforeprint', function() { document.querySelector('.roadmap-embed-inner').style.transform = ''; });\n" +
+    "window.addEventListener('afterprint', scaleRoadmapEmbed);\n" +
     '<' + '/script>';
 
   return `<!DOCTYPE html>
@@ -1579,9 +1676,14 @@ html, body { margin:0; padding:0; background:#FFFDF9; color:#262524; }
 .cendo-page-break { page-break-after: always; }
 @media print { body { padding-bottom:0 !important; } #cendo-report-toolbar { display:none !important; } }
 body { padding-bottom:70px; }
-.roadmap-embed-outer { width:180mm; height:267mm; overflow:hidden; position:relative; margin:0 auto; }
-.roadmap-embed-inner { width:267mm; height:180mm; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(90deg); }
-.roadmap-embed-inner iframe { width:100%; height:100%; border:none; }
+.roadmap-embed-outer { width:100%; max-width:1000px; margin:0 auto; aspect-ratio: 1650 / 1166; position:relative; overflow:hidden; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
+.roadmap-embed-inner { position:absolute; top:0; left:0; width:1650px; height:1166px; transform-origin:top left; }
+.roadmap-embed-inner iframe { width:1650px; height:1166px; border:none; display:block; }
+@media print {
+  .roadmap-embed-outer { width:180mm; height:267mm; max-width:none; aspect-ratio:auto; overflow:hidden; position:relative; margin:0 auto; box-shadow:none; border-radius:0; }
+  .roadmap-embed-inner { width:267mm; height:180mm; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(90deg) !important; transform-origin:center center; }
+  .roadmap-embed-inner iframe { width:267mm; height:180mm; }
+}
 </style>
 </head>
 <body>
@@ -1619,9 +1721,9 @@ async function handleRoadmapSubmitted() {
 
   try {
     if (!lastRoadmapData) throw new Error('Roadmap belum tersedia');
-    const rsData = await generateReflectionReportData(lastRoadmapData);
-
     const name = document.getElementById('setupName').value.trim() || 'Coachee';
+    const rsData = await generateReflectionReportData(lastRoadmapData, name);
+
     const email = document.getElementById('setupEmail').value.trim();
     const institusi = document.getElementById('setupInstitusi').value.trim() || 'Pilar Asa Cendekia';
     const dateRaw = document.getElementById('setupDate').value || '';
