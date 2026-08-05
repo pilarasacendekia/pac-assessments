@@ -730,8 +730,19 @@ async function callCendo(typingEl, opts) {
     });
     const data = await response.json();
     typingEl.remove();
+    if (data.error) {
+      console.error('Respons error dari proxy/Anthropic:', data);
+      const errMsg = typeof data.error === 'string' ? data.error : (data.error.message || JSON.stringify(data.error));
+      addBubble('note', 'ASA gagal membalas — pesan error: ' + errMsg);
+      return;
+    }
     const textBlock = (data.content || []).find(c => c.type === 'text');
-    let reply = textBlock ? textBlock.text : '(tidak ada respons — coba lagi)';
+    if (!textBlock) {
+      console.error('Respons tidak berisi teks. Data lengkap:', data);
+      addBubble('note', 'ASA gagal membalas — respons tidak berisi teks. Detail: ' + JSON.stringify(data).slice(0, 300));
+      return;
+    }
+    let reply = textBlock.text;
     const isReady = /\[ROADMAP_READY\]/.test(reply);
     reply = reply.replace(/\[ROADMAP_READY\]/g, '').trim();
     addBubble('assistant', reply);
