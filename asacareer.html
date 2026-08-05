@@ -1195,7 +1195,7 @@ function buildCoverSection(name, institusi, email, dateFormatted) {
   <div style="flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; text-align:center; padding:20mm;">
     <img src="data:image/png;base64,${LOGO_B64}" style="width:200px; height:auto; margin-bottom:36px;" alt="ASA">
     <div style="font-family:'Sora',sans-serif; font-size:11px; letter-spacing:3px; text-transform:uppercase; color:#B58C5D; font-weight:700; margin-bottom:10px;">Career Report</div>
-    <div style="font-family:'Sora',sans-serif; font-size:30px; font-weight:700; color:#152B3E; line-height:1.25; max-width:420px;">My START Career Roadmap &amp; Reflection</div>
+    <div style="font-family:'Sora',sans-serif; font-size:30px; font-weight:700; color:#152B3E; line-height:1.25; max-width:420px;">CAREER REPORT</div>
     <div style="font-size:13px; color:#7D7869; margin-top:12px;">Reflection Report &middot; Ringkasan Assessment &middot; Career Roadmap</div>
     <div style="margin-top:44px; background:#F8F6F0; border-radius:14px; padding:24px 34px; min-width:300px; border:1px solid #EAE6DA;">
       <div style="text-align:left; display:grid; grid-template-columns:auto 1fr; gap:8px 18px; font-size:13px;">
@@ -1645,21 +1645,29 @@ window.addEventListener('DOMContentLoaded', async function() {
   const roadmapEmbedScript =
     '<script>window.__roadmapHtml = ' + safeScriptString(roadmapStandaloneHtml) + ';<' + '/script>\n' +
     '<script>\n' +
-    "function scaleRoadmapEmbed() {\n" +
+    "function scaleRoadmapForScreen() {\n" +
     "  const outer = document.querySelector('.roadmap-embed-outer');\n" +
-    "  const inner = document.querySelector('.roadmap-embed-inner');\n" +
-    "  if (!outer || !inner) return;\n" +
+    "  const scaleWrap = document.querySelector('.roadmap-scale-wrap');\n" +
+    "  if (!outer || !scaleWrap) return;\n" +
     "  const scale = outer.offsetWidth / 1650;\n" +
-    "  inner.style.transform = 'scale(' + scale + ')';\n" +
+    "  scaleWrap.style.transform = 'scale(' + scale + ')';\n" +
+    "}\n" +
+    "function scaleRoadmapForPrint() {\n" +
+    "  const rotateWrap = document.querySelector('.roadmap-rotate-wrap');\n" +
+    "  const scaleWrap = document.querySelector('.roadmap-scale-wrap');\n" +
+    "  if (!rotateWrap || !scaleWrap) return;\n" +
+    "  const rect = rotateWrap.getBoundingClientRect();\n" +
+    "  const scale = Math.min(rect.width / 1650, rect.height / 1166);\n" +
+    "  scaleWrap.style.transform = 'scale(' + scale + ')';\n" +
     "}\n" +
     "window.addEventListener('DOMContentLoaded', function() {\n" +
     "  const frame = document.getElementById('roadmap-iframe');\n" +
     '  if (frame) frame.srcdoc = window.__roadmapHtml;\n' +
-    "  scaleRoadmapEmbed();\n" +
+    "  scaleRoadmapForScreen();\n" +
     "});\n" +
-    "window.addEventListener('resize', scaleRoadmapEmbed);\n" +
-    "window.addEventListener('beforeprint', function() { document.querySelector('.roadmap-embed-inner').style.transform = ''; });\n" +
-    "window.addEventListener('afterprint', scaleRoadmapEmbed);\n" +
+    "window.addEventListener('resize', scaleRoadmapForScreen);\n" +
+    "window.addEventListener('beforeprint', scaleRoadmapForPrint);\n" +
+    "window.addEventListener('afterprint', scaleRoadmapForScreen);\n" +
     '<' + '/script>';
 
   return `<!DOCTYPE html>
@@ -1676,13 +1684,16 @@ html, body { margin:0; padding:0; background:#FFFDF9; color:#262524; }
 .cendo-page-break { page-break-after: always; }
 @media print { body { padding-bottom:0 !important; } #cendo-report-toolbar { display:none !important; } }
 body { padding-bottom:70px; }
+/* Layar: kotak proporsional landscape, diskalakan penuh tanpa rotasi */
 .roadmap-embed-outer { width:100%; max-width:1000px; margin:0 auto; aspect-ratio: 1650 / 1166; position:relative; overflow:hidden; border-radius:8px; box-shadow:0 1px 4px rgba(0,0,0,0.08); }
-.roadmap-embed-inner { position:absolute; top:0; left:0; width:1650px; height:1166px; transform-origin:top left; }
-.roadmap-embed-inner iframe { width:1650px; height:1166px; border:none; display:block; }
+.roadmap-rotate-wrap { position:absolute; top:0; left:0; width:100%; height:100%; }
+.roadmap-scale-wrap { width:1650px; height:1166px; transform-origin:top left; }
+.roadmap-scale-wrap iframe { width:1650px; height:1166px; border:none; display:block; }
 @media print {
+  /* Cetak: outer jadi kotak portrait, rotate-wrap diputar 90° dan diukur presisi (267mm x 180mm)
+     sebelum konten aslinya diskalakan masuk — supaya tidak ada bagian yang terpotong. */
   .roadmap-embed-outer { width:180mm; height:267mm; max-width:none; aspect-ratio:auto; overflow:hidden; position:relative; margin:0 auto; box-shadow:none; border-radius:0; }
-  .roadmap-embed-inner { width:267mm; height:180mm; position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(90deg) !important; transform-origin:center center; }
-  .roadmap-embed-inner iframe { width:267mm; height:180mm; }
+  .roadmap-rotate-wrap { width:267mm; height:180mm; top:50%; left:50%; transform:translate(-50%,-50%) rotate(90deg); transform-origin:center center; }
 }
 </style>
 </head>
@@ -1693,7 +1704,9 @@ body { padding-bottom:70px; }
 ${assessmentSectionHtml}
 <div class="cendo-page-break">
   <div class="roadmap-embed-outer">
-    <div class="roadmap-embed-inner"><iframe id="roadmap-iframe"></iframe></div>
+    <div class="roadmap-rotate-wrap">
+      <div class="roadmap-scale-wrap"><iframe id="roadmap-iframe"></iframe></div>
+    </div>
   </div>
 </div>
 <div>${backCoverHtml}</div>
@@ -1749,25 +1762,23 @@ async function handleRoadmapSubmitted() {
 
     const fullReportHtml = buildFullCareerReportHtml(name, institusi, email, dateFormatted, rsData, matchedRecord, lastRoadmapData, reportPayload, originalPdfs, roadmapStandaloneHtml);
 
-    note.style.fontStyle = 'normal';
-    note.textContent = '';
-    const label = document.createElement('div');
-    label.textContent = 'Career Report lengkap siap:';
-    label.style.marginBottom = '6px';
-    note.appendChild(label);
+    note.remove();
+
+    document.getElementById('roadmapBar').style.display = 'none';
+    disablePostSessionButtons();
+    await triggerClosingMessage();
+
     const linkRow = document.createElement('div');
-    openBlobLink(fullReportHtml, '🎓 Buka Career Report Lengkap (4 halaman)', linkRow);
-    note.appendChild(linkRow);
+    linkRow.style.cssText = 'display:flex; justify-content:center; margin:10px 0;';
+    openBlobLink(fullReportHtml, '🎓 Buka Career Report Saya', linkRow);
+    thread.appendChild(linkRow);
     thread.scrollTop = thread.scrollHeight;
+
+    addBackToHomeButton();
   } catch (err) {
     console.error(err);
     note.textContent = 'Career Report belum berhasil disusun — ' + (err && err.message ? err.message : 'terjadi kesalahan.') + ' (detail di console browser)';
   }
-
-  document.getElementById('roadmapBar').style.display = 'none';
-  disablePostSessionButtons();
-  await triggerClosingMessage();
-  addBackToHomeButton();
 }
 
 function disablePostSessionButtons() {
