@@ -687,6 +687,10 @@ async function startSession() {
   if (genRoadmapBtnReset) { genRoadmapBtnReset.disabled = false; genRoadmapBtnReset.style.opacity = ''; genRoadmapBtnReset.style.cursor = ''; }
   const genReportBtnReset = document.getElementById('genReportBtn');
   if (genReportBtnReset) { genReportBtnReset.style.display = 'none'; }
+  const inputReset = document.getElementById('input');
+  if (inputReset) { inputReset.disabled = false; inputReset.placeholder = 'Ketik pesan Anda…'; }
+  const sendBtnReset = document.getElementById('sendBtn');
+  if (sendBtnReset) { sendBtnReset.disabled = false; sendBtnReset.style.opacity = ''; sendBtnReset.style.cursor = ''; }
   const name = document.getElementById('setupName').value.trim() || 'Coachee';
   const date = document.getElementById('setupDate').value.trim();
   const institusi = document.getElementById('setupInstitusi').value.trim();
@@ -744,10 +748,24 @@ DISC: ${record.disc}`;
   saveSession();
 }
 
+const MAX_USER_TURNS = 50;
+const WARN_AT_TURNS = 40;
+
 async function sendMessage() {
   const input = document.getElementById('input');
   const text = input.value.trim();
   if (!text) return;
+
+  const userTurnCount = messages.filter(m => m.role === 'user').length;
+  if (userTurnCount >= MAX_USER_TURNS) {
+    input.value = '';
+    input.disabled = true;
+    input.placeholder = 'Sesi ini sudah mencapai batas maksimal percakapan.';
+    document.getElementById('sendBtn').disabled = true;
+    addBubble('note', 'Sesi ngobrol kita sudah sampai batas maksimal. Tidak masalah — semua yang sudah kamu bagikan tetap tersimpan. Klik "Tampilkan Career Roadmap" di atas untuk lanjut ke langkah berikutnya.');
+    return;
+  }
+
   clearInactivityTimers();
   const btn = document.getElementById('sendBtn');
   btn.disabled = true;
@@ -765,6 +783,11 @@ async function sendMessage() {
   await callCendo(typing);
   btn.disabled = false;
   input.focus();
+
+  const newUserTurnCount = messages.filter(m => m.role === 'user').length;
+  if (newUserTurnCount === WARN_AT_TURNS) {
+    addBubble('note', `Kita sudah ngobrol cukup dalam sejauh ini. Ada dua opsi: lanjut ngobrol sampai ${MAX_USER_TURNS - WARN_AT_TURNS} pesan lagi kalau masih ada yang mau digali, atau langsung klik "Tampilkan Career Roadmap" di atas kalau sudah merasa cukup.`);
+  }
 }
 
 async function callCendo(typingEl, opts) {
