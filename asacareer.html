@@ -1625,24 +1625,7 @@ function buildReportToolbarHtml(indexUrl) {
       });
       var result = await resp.json().catch(function(){ return {result:'unknown'}; });
       if (result.result === 'success') {
-        statusEl.innerHTML = '✓ Terkirim ke email kamu.' + pdfWarning;
-        if (result.diag) {
-          var d = result.diag;
-          var diagLines = [
-            'PDF Report diterima server: ' + (d.receivedReportPdf ? 'YA (' + d.receivedReportPdfLength + ' karakter)' : 'TIDAK'),
-            'PDF Roadmap diterima server: ' + (d.receivedRoadmapPdf ? 'YA (' + d.receivedRoadmapPdfLength + ' karakter)' : 'TIDAK'),
-            'Folder Drive dikonfigurasi: ' + (d.driveFolderConfigured ? 'YA' : 'TIDAK'),
-            'Link Drive Report: ' + (d.reportDriveUrl || '(kosong)'),
-            'Link Drive Roadmap: ' + (d.roadmapDriveUrl || '(kosong)'),
-            'Jumlah lampiran di email: ' + d.emailAttachmentCount,
-            d.driveError ? 'Error simpan Drive: ' + d.driveError : '',
-            d.attachError ? 'Error buat lampiran: ' + d.attachError : ''
-          ].filter(Boolean);
-          var diagBox = document.createElement('div');
-          diagBox.style.cssText = 'margin-top:8px; padding:10px 12px; background:#F5F0E6; border-radius:8px; font-size:11px; font-family:monospace; color:#4B4A45; text-align:left; max-width:420px;';
-          diagBox.innerHTML = diagLines.join('<br>');
-          statusEl.parentNode.insertBefore(diagBox, statusEl.nextSibling);
-        }
+        statusEl.textContent = '✓ Terkirim ke email kamu.' + pdfWarning;
       } else {
         statusEl.textContent = 'Gagal: ' + (result.message || 'terjadi kesalahan di server.');
       }
